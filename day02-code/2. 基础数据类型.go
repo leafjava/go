@@ -1,7 +1,5 @@
 package main
 
-import "fmt"
-
 //整数类型
 //func main() {
 //	var a int8 = 127
@@ -35,15 +33,59 @@ import "fmt"
 //}
 
 // 字符串类型
-func main() {
-	var name string = "leaf"
-	fmt.Println(name)
+//func main() {
+//	var name string = "leaf"
+//	fmt.Println(name)
+//
+//	var address string = `0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb`
+//	fmt.Println(address)
+//
+//	greeting := "Hello, world!"
+//	fmt.Println(greeting)
+//
+//
+//}
 
-	var address string = `0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb`
-	fmt.Println(address)
+// 布尔类型
+//func main() {
+//	var isWeb3Developer bool = true
+//	var hasExperience bool = false
+//
+//	canApply := isWeb3Developer && hasExperience
+//
+//	fmt.Println(canApply)
+//
+//	age := 23
+//
+//	isAdult := age >= 18
+//
+//	fmt.Println(isAdult)
+//}
 
-	greeting := "Hello, world!"
-	fmt.Println(greeting)
+// 基本常量
+//const PI = 3.14159
+//const AppName = "SkillsBay"
+//
+//func main() {
+//	const MaxRetry = 3
+//	fmt.Println(PI, AppName, MaxRetry)
+//}
 
-	
-}
+// iota 枚举器（重要）⭐
+const (
+	Sunday    = iota
+	Monday    // 1
+	Tuesday   // 2
+	Wednesday // 3
+	Thursday  // 4
+	Friday    // 5
+	Saturday  // 6
+)
+
+// 区块链网络枚举
+//const (
+//	Ethereum = iota + 1 // 1
+//	BSC                 // 2
+//	Polygon             // 3
+//	TON                 // 4
+//)
