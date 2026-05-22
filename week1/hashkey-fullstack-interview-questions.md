@@ -52,6 +52,9 @@ nonce 管理、审计日志，这些在我的项目里都有实践。
 
 ### Q1: 如何在大型 Web3 项目中管理钱包状态和多链状态？（最高频）
 
+**🗣️ 口述话术**：
+> "我用分层策略。钱包连接状态放 React Context，因为轻量且跨组件共享；全局业务配置比如多链信息和 Gas 价格用 Zustand，比 Redux 简洁且天然支持 selector 防重渲染；合约读写的链上数据用 RTK Query 做缓存和定时轮询，CoderWhy 电商项目里有详细讲过这套模式；组件内部的临时状态比如交易弹窗就用 useState。核心原则是——服务端状态和客户端状态分离管理。"
+
 **回答框架**：分层状态管理
 
 ```
@@ -154,6 +157,9 @@ export const contractApi = createApi({
 
 ### Q2: React 性能优化 — 如何优化 DApp 列表渲染和 Gas 估算页面？
 
+**🗣️ 口述话术**：
+> "我用四招。第一，React.memo 包裹纯展示组件，避免父组件更新时子组件跟着无意义重渲染；第二，useMemo 缓存 Gas 估算这类复杂计算结果，useCallback 稳定回调引用防止子组件 props 抖动；第三，交易列表这种几千条数据用 react-window 虚拟列表只渲染可视区域，CoderWhy 电商项目里商品列表就是这样优化的；第四，不同页面用 lazy + Suspense 做代码分割，首屏只加载当前路由的代码。"
+
 **标准答案**：
 
 ```typescript
@@ -229,6 +235,9 @@ function App() {
 ---
 
 ### Q3: useEffect 依赖数组原理？你封装过哪些自定义 Hook？
+
+**🗣️ 口述话术**：
+> "useEffect 的依赖数组本质是浅比较——React 在每次渲染后对比依赖数组里每个值是否变了，变了就重新执行 effect。空数组表示只执行一次，相当于 Vue 的 mounted。Web3 项目里我封装了三个核心 Hook：useWallet 封装 Wagmi 的钱包连接逻辑、useContractRead 处理合约读取的加载态和错误态、useTransaction 管理交易从 pending 到 confirmed 的完整状态流转。CoderWhy 课程专门有一章讲自定义 Hook 的设计思想——把可复用逻辑从组件里抽出来。"
 
 **标准答案**：
 
@@ -325,6 +334,9 @@ function useTransaction() {
 
 ### Q4: Wagmi vs 直接用 Ethers.js？什么时候用哪个？
 
+**🗣️ 口述话术**：
+> "我的选择策略很简单——标准 DApp 如 Swap 页面、资产仪表盘，直接用 Wagmi，因为钱包连接、链切换、数据缓存都是开箱即用的 Hook，开发效率高很多；但涉及复杂交易构造比如杠杆合约交互、精确 nonce 管理的时候，我会用 Viem（Wagmi 底层就是它）直接写底层逻辑。实践上通常是混合方案——Wagmi 管钱包连接和链上读，Viem 管交易发送。"
+
 **标准答案**：
 
 | 对比维度 | Wagmi | Ethers.js 裸用 |
@@ -346,6 +358,9 @@ function useTransaction() {
 ## 三、后端 Go 高频题（10-12分钟）
 
 ### Q5: Goroutine 和线程的区别？Go 为什么适合高并发交易系统？
+
+**🗣️ 口述话术**：
+> "Goroutine 初始只占 2KB 内存，而操作系统线程是 1-2MB，差了一千倍，所以 Go 可以轻松跑百万级协程。关键是 Go 的 G-M-P 调度模型——Goroutine 由 Go 运行时在用户态调度，切换成本是纳秒级，而线程切换要陷入内核态，微秒级。交易所场景下，比如一千个用户同时下单，如果用线程模型要一千个线程内存直接爆了，但 Go 可以把一千个请求映射到几个 OS 线程上高效执行。再加上 Channel 的 CSP 通信模型，通过消息传递而不是共享内存来同步数据，天然避免了锁竞争。"
 
 **标准答案**：
 
@@ -404,6 +419,9 @@ func queryBalancesConcurrent(addresses []string) map[string]float64 {
 ---
 
 ### Q6: Gin 如何做 JWT 认证 + 中间件？对比你之前用的 Spring Boot？
+
+**🗣️ 口述话术**：
+> "核心流程三步：登录时用 golang-jwt 库生成带用户 ID 和角色的 Token，设 24 小时过期，返回给客户端；然后写一个 JWTAuth 中间件函数，从请求头的 Authorization 字段取出 Bearer Token，解析出 Claims，通过 c.Set() 把 user_id 和 role 注入到 Gin 的 Context 里，后续 Handler 通过 c.Get() 就能拿到；最后在路由层面，公开路由直接注册，需要认证的用 r.Group 加中间件，管理员接口再叠加一个 RequireRole 中间件做 RBAC。对比 Spring Boot，思路完全一样——拦截器取 Token、解析、注入上下文、链式调用，只是 Gin 不需要注解和 AOP，一个函数返回 gin.HandlerFunc 就完事了，更轻量。"
 
 **标准答案**（核心代码 + 架构对比）：
 
@@ -503,6 +521,9 @@ func SetupRoutes(r *gin.Engine) {
 
 ### Q7: GORM 事务处理 + 复杂关联查询？
 
+**🗣️ 口述话术**：
+> "事务我用 db.Transaction 闭包方式，把扣款、加款、记录流水都包在一个函数里，任何一步返回 error 就自动回滚，比手动 Begin/Commit/Rollback 安全得多。并发场景下用 clause.Locking 加悲观锁，防止多个请求同时读到同一余额。关联查询用 Preload 做预加载，支持条件过滤比如只查某个链的钱包、只查最近 24 小时的交易，这样避免 N+1 查询问题。"
+
 **标准答案**：
 
 ```go
@@ -564,6 +585,9 @@ func GetUserWithWallets(db *gorm.DB, userID uint) (*User, error) {
 ---
 
 ### Q8: Go 错误处理 vs Java 异常？为什么 Go 更适合金融系统？
+
+**🗣️ 口述话术**：
+> "Go 的错误是普通返回值，不是异常抛出的。金融系统最看重的是——每个错误路径在代码里显式可见、不能漏。Java 的 try-catch 你可以写个空的 catch 块把异常吞掉，但 Go 的 error 你不检查编译器就会警告。而且 Go 不需要栈展开，性能更好。我在项目里会定义一组业务错误变量，比如 ErrInsufficientBalance、ErrKYCRequired，再加一个带错误码和上下文的 BusinessError 结构体，这样前端拿到错误码就能精确展示提示，后端日志也能完整追踪。fmt.Errorf 用 %w 包装错误链，最外层统一记录，查问题时完整的调用链条一目了然。"
 
 **标准答案**：
 
@@ -627,6 +651,9 @@ func Withdraw(db *gorm.DB, userID string, amount float64) error {
 ## 四、Web3 综合 + 系统设计题（10-12分钟，重点加分）
 
 ### Q9: 如何设计一个安全的高频交易/杠杆交易订单系统？
+
+**🗣️ 口述话术**：
+> "核心链路是：API Gateway → 订单服务（校验 + 风控）→ 撮合引擎 → 结算服务，横向有风控服务和区块链交互层。下单前要过五关：杠杆倍率不能超过用户等级限制、保证金计算是否足够、KYC 是否已完成、订单价格和市价偏差不能超过 10% 防止闪崩、用户 nonce 递增防重放。持仓后，清算引擎定时扫描所有未平仓仓位，计算未实现盈亏，当净值低于维持保证金——通常是名义价值的 0.5%——就触发强平。关键数据用 Redis 做订单簿和价格缓存（毫秒级），PostgreSQL 做持久化和审计。每个操作都要写审计日志，这是合规的基本要求。"
 
 **这是 HashKey 最可能问的系统设计题**，按以下结构回答：
 
@@ -728,6 +755,9 @@ func (s *BlockchainService) SendTransaction(tx *Transaction) (string, error) {
 
 ### Q10: 智能合约前端交互中，如何防范常见攻击？
 
+**🗣️ 口述话术**：
+> "我总结了六道防线。第一，地址必须走 EIP-55 校验和验证，防止用户复制了错误大小写的地址；第二，交易发送前用 simulateContract 在节点上模拟执行一次，失败了直接拦掉不浪费 Gas；第三，RPC 节点至少配三个备选，请求时随机选一个，防止单节点投毒返回假数据；第四，滑点保护——用户设置最小输出量，实际成交低于这个值就 revert；第五，签名前做二次确认弹窗加 15 秒冷却期，防止误操作和钓鱼；第六，前端永远不存私钥，只用 WalletConnect 或 MetaMask，私钥永远在用户自己手里。"
+
 **标准答案**：
 
 ```typescript
@@ -800,6 +830,9 @@ function SafeSignButton({ tx }: { tx: Transaction }) {
 ---
 
 ### Q11: 多链资产统一展示怎么实现？
+
+**🗣️ 口述话术**：
+> "后端核心是接口抽象加并发查询。先定义 ChainReader 接口——GetBalance、GetTokenBalance、GetChainID，每条链各自实现。查询时用 Goroutine 并发请求所有链，WaitGroup 等结果，每条链有独立的超时控制，单链挂了不影响整体。汇总后用 CoinGecko 或 Binance API 的价格折算成 USD 统一展示。结果写 Redis 缓存 60 秒，因为链上余额不会秒级变化。前端用 React Query 做 30 秒轮询刷新，用户看到的是接近实时的总资产。"
 
 **标准答案**：
 
@@ -886,6 +919,11 @@ function AssetOverview({ address }: { address: string }) {
 
 ### Q12: 项目中最难的技术问题？怎么解决的？
 
+**🗣️ 口述话术**：
+> （用 STAR 法则 30 秒讲完——场景→任务→行动→结果）
+
+> "做多链 DEX 聚合器时，需要同时查 5 个 DEX 报价，但某个 DEX 经常超时拖慢整体。我用 Go 的 Context 给每个请求设 3 秒超时，Goroutine 并发查，select + time.After 做优雅降级——哪个先返回就用哪个。还加了个简易熔断器，连续失败 3 次就 30 秒内跳过它。最终查询耗时从 8 秒降到 1.5 秒，可用性从 95% 提到 99.9%。"
+
 **推荐回答结构**：STAR 法则
 
 **示例回答**（结合你的背景改编）：
@@ -911,6 +949,9 @@ function AssetOverview({ address }: { address: string }) {
 
 ### Q13: new vs make 的区别？
 
+**🗣️ 口述话术**：
+> "new 分配内存返回指针，任何类型都能用，值初始化为零值。make 只能用于 slice、map、channel 这三种内置引用类型，返回的是初始化后的值本身而不是指针，因为这三个类型的底层结构必须先初始化才能用。简单记——new 是通用的，make 是专用的。"
+
 ```go
 // new：分配内存返回指针，值为零值（任何类型都能用）
 p := new(int)      // *int 类型，值为 0
@@ -924,6 +965,9 @@ ch := make(chan int, 10)
 **记忆**：`make` 只初始化 Go 的三种内置引用类型。
 
 ### Q14: Go 的 nil 接口陷阱？
+
+**🗣️ 口述话术**：
+> "Go 的接口底层是类型和数据指针的二元组。一个常见陷阱是——函数里把一个类型化的 nil 指针赋给接口返回，调用方判断 err != nil 会为 true，因为接口的类型部分不是 nil。修复很简单：检查指针是否为 nil，是的话显式 return nil。这在实际开发中很容易踩，特别是 DAO 层返回 GORM 查询结果的时候。"
 
 ```go
 func getError() error {
