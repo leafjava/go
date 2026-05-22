@@ -423,6 +423,24 @@ func queryBalancesConcurrent(addresses []string) map[string]float64 {
 **🗣️ 口述话术**：
 > "核心流程三步：登录时用 golang-jwt 库生成带用户 ID 和角色的 Token，设 24 小时过期，返回给客户端；然后写一个 JWTAuth 中间件函数，从请求头的 Authorization 字段取出 Bearer Token，解析出 Claims，通过 c.Set() 把 user_id 和 role 注入到 Gin 的 Context 里，后续 Handler 通过 c.Get() 就能拿到；最后在路由层面，公开路由直接注册，需要认证的用 r.Group 加中间件，管理员接口再叠加一个 RequireRole 中间件做 RBAC。对比 Spring Boot，思路完全一样——拦截器取 Token、解析、注入上下文、链式调用，只是 Gin 不需要注解和 AOP，一个函数返回 gin.HandlerFunc 就完事了，更轻量。"
 
+简单一点：
+第一步：JWT 工具函数
+负责 token 的生成和解析，通常封装在 utils/jwt.go 中。
+
+第二步：JWT 认证中间件
+验证 token，把用户信息存入 gin.Context，后续 handler 和中间件都能取到。
+
+第三步：角色权限中间件
+从 context 取出角色，判断是否有权限。
+
+第四步：路由分组应用
+利用 Gin 的 Group 功能，按需嵌套认证和权限中间件。
+
+补充两个加分点：
+双 token 方案：access token（短期，如 15 分钟）+ refresh token（长期，如 7 天），access token 过期后用 refresh token 换取新的，避免频繁登录。
+
+退出登录：JWT 是无状态的，无法直接失效。通常用 Redis 维护一个 token 黑名单，退出时把 token 加入黑名单，中间件里校验时先查黑名单。
+
 **标准答案**（核心代码 + 架构对比）：
 
 ```go
@@ -833,6 +851,17 @@ function SafeSignButton({ tx }: { tx: Transaction }) {
 
 **🗣️ 口述话术**：
 > "后端核心是接口抽象加并发查询。先定义 ChainReader 接口——GetBalance、GetTokenBalance、GetChainID，每条链各自实现。查询时用 Goroutine 并发请求所有链，WaitGroup 等结果，每条链有独立的超时控制，单链挂了不影响整体。汇总后用 CoinGecko 或 Binance API 的价格折算成 USD 统一展示。结果写 Redis 缓存 60 秒，因为链上余额不会秒级变化。前端用 React Query 做 30 秒轮询刷新，用户看到的是接近实时的总资产。"
+
+多链资产清单：
+
+接口抽象（ChainReader：GetBalance / GetTokenBalance / GetChainID）
+goroutine 并发查询 + WaitGroup 汇总
+单链独立超时（一条链挂了不影响整体）
+价格折算 USD（CoinGecko / Binance API）
+Redis 缓存 60 秒（链上余额不会秒变）
+前端 React Query 30 秒轮询
+
+抽象接口 → 并发查询 → 容错超时 → 价格换算 → 缓存兜底 → 前端轮询，一个请求六层协作
 
 **标准答案**：
 
