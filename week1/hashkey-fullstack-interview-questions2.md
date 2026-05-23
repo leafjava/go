@@ -12,6 +12,14 @@
 **🗣️ 口述话术**：
 > "Context 在 Web3 后端有四个核心场景。一是超时控制——链上 RPC 调用不能无限等待，用 WithTimeout 设 3 秒上限；二是取消传播——用户关掉页面时，通过 WithCancel 把信号传到所有子 Goroutine 让它们优雅退出；三是值传递——把 traceId 放到 Context 里贯穿整个请求链，出问题时一个 traceId 查所有日志；四是 GORM 集成——db.WithContext(ctx) 让 SQL 查询也享受超时和取消。记住四个原则：Context 永远是函数第一个参数、不要存到 struct 里、不要传 nil、只放请求域数据不放业务参数。"
 
+Context 使用清单：
+
+超时控制——RPC/HTTP 调用加 WithTimeout，链上请求通常 3~5 秒上限
+取消传播——WithCancel 串联所有子 Goroutine，用户关页面即终止
+值传递——traceId 放 Context，一个 ID 串联整条请求链日志
+GORM 集成——db.WithContext(ctx) 让数据库查询也享受超时和取消
+
+
 **考察点**：对 Go 标准库的理解深度
 
 **标准答案**：
@@ -80,6 +88,17 @@ func (r *OrderRepo) Create(ctx context.Context, order *Order) error {
 
 **🗣️ 口述话术**：
 > "我遇到最多的是五个坑。向已关闭的 Channel 发数据会直接 panic；从已关闭的 Channel 取数据不报错但返回零值，一定要用 ok 模式判断；Goroutine 泄漏最常见——Channel 永远阻塞没人发数据，Goroutine 就死在那，必须用 Context 或 close 给退出信号；select 多个 case 同时就绪时是随机选择的，不是按代码顺序；for range Channel 必须先 close 否则永远阻塞。总结一句——Channel 的发送方负责 close，接收方用 ok 判断。"
+
+Channel 五大坑：
+
+向已关闭的 Channel 发数据 → panic
+从已关闭的 Channel 取数据 → 不报错但返回零值，必须用 v, ok := <-ch 判断
+Goroutine 泄漏——Channel 永远阻塞没人发数据，用 Context 或 close 给退出信号
+select 多 case 同时就绪 → 随机选择，不按代码顺序
+for range Channel → 必须先 close，否则永远阻塞
+黄金法则：
+
+发送方负责 close，接收方用 ok 判断
 
 **标准答案**：
 
@@ -155,6 +174,21 @@ for val := range ch {
 **🗣️ 口述话术**：
 > "决策很简单。读写均衡的场景用 Mutex，最通用；读多写少比如系统配置、地址白名单，用 RWMutex，多个读可以同时进行不互斥；sync.Map 有两个特定场景——key 只写一次但读很多次，或者多个 Goroutine 各自操作不同的 key 没有冲突。大多数情况下 Mutex 加普通 map 就够用了，sync.Map 不是银弹。"
 
+或者
+"三种锁各司其职。**Mutex** 最通用，读写都互斥，适合计数器、状态机这类读写均衡的场景。**RWMutex** 适合读多写少，比如系统配置、白名单，多个读可以同时进行不互斥。**sync.Map** 有两个特定场景——key 只写一次但读很多次，或者多个 Goroutine 各自操作不同的 key。大多数情况下 Mutex 加普通 map 就够用了，sync.Map 不是银弹，需要类型断言还丢掉了类型安全。"
+
+选锁决策清单：
+
+读写均衡 → Mutex，最通用（计数器、状态机、队列）
+读多写少 → RWMutex，多个读同时进行不互斥（系统配置、白名单）
+key 只写一次但读很多次 → sync.Map（代币地址缓存）
+各 Goroutine 操作不同 key → sync.Map（用户 session）
+其余所有情况 → Mutex + 普通 map 就够用，sync.Map 不是银弹
+
+当被问 Mutex、RWMutex、sync.Map 怎么选 时，你直接说：
+“一个人读写用 Mutex 最稳；很多人读一人写就用 RWMutex 提升性能；一人写完众人读或者各读各的就用 sync.Map，其余情况还是老老实实 Mutex + map 就够了。”
+
+
 **标准答案**：
 
 ```go
@@ -216,6 +250,19 @@ sm.Range(func(key, value any) bool {
 
 **🗣️ 口述话术**：
 > "Go 的哲学是——不通过共享内存来通信，而通过通信来共享内存。实现无锁结构就是让一个后台 Goroutine 独享数据，外部通过 Channel 发消息来读写。比如一个缓存，外面发 getCh 请求带一个 result channel，后台 Goroutine select 收到后查 map 把结果塞回 result channel。这样整个系统只有一个 Goroutine 碰数据，自然不需要锁。对于简单计数用 atomic 就够了。但说实话，除非锁真的成了性能瓶颈，否则 Mutex 加 map 是最务实的方案。"
+
+
+简单版:
+无锁并发三招：
+Channel 通信模型——后台 Goroutine 独享数据，外部通过 Channel 发消息读写，整个系统只有一人碰数据，天然无锁
+
+请求带 result channel——发 getCh 时附带 chan result，后台查完塞回去，调用方阻塞等结果
+
+简单计数用 atomic——atomic.AddInt64 / atomic.LoadInt64 足够，不用上锁
+务实原则：
+
+除非锁真的成了性能瓶颈，否则 Mutex + map 就是最好的方案
+
 
 **标准答案**：
 
@@ -289,6 +336,13 @@ func (c *AtomicCounter) Val() int64 { return c.value.Load() }
 **🗣️ 口述话术**：
 > "React 18 的核心突破是——渲染可以被中断了。以前一次 setState 触发重渲染就必须跑完，现在可以用 useTransition 标记低优先级更新，比如搜索框输入——文字本身立即显示（高优先级），搜索结果列表延迟渲染（低优先级），用户打字时不会被搜索结果卡住。useDeferredValue 也是类似思路，允许组件先用旧值渲染，等空闲了再更新。Suspense 搭配数据获取组件可以做到——不同区块独立加载，一个慢了不影响另一个。对 Web3 来说特别有用，比如钱包状态用高优先级保持响应，历史交易列表用低优先级慢慢加载。"
 
+React 18 并发特性清单：
+
+渲染可中断——useTransition 标记低优先级更新，高优先级任务（输入文字）不会被低优先级（搜索结果）卡住
+useDeferredValue——组件先用旧值渲染，空闲后再更新，适合列表/图表等重渲染场景
+Suspense 独立加载——不同区块各自加载，一个慢了不影响另一个
+Web3 实践——钱包状态走高优先级保持响应，历史交易列表走低优先级慢慢加载
+
 **标准答案**：
 
 ```typescript
@@ -343,6 +397,16 @@ function AssetPage() {
 
 **🗣️ 口述话术**：
 > "闭包陷阱的本质是——useEffect 的回调在创建时捕获了当时的 state 值，如果依赖数组是空的，那它永远看到的都是初始值。三种解法：最简单的，setState 用函数式更新 prev => prev + 1，不依赖外部变量；第二种，把最新值存到 useRef 里，ref 每次渲染都更新但引用不变，effect 里读 ref.current 总是最新的；第三种，正确填写依赖数组让 effect 在值变化时重新执行。Web3 里最典型的场景是——钱包地址变了但旧的 effect 还在用老地址做 RPC 查询，用 useRef 存地址就能解决。"
+
+闭包陷阱解法清单：
+
+函数式更新——setCount(prev => prev + 1)，不依赖外部变量，最简单
+
+useRef 存最新值——ref 引用不变但 .current 总是最新，effect 里读 ref.current 永不 stale
+useRef, 在组件多次渲染时, 返回的是同一个值
+正确填写依赖数组——让 effect 在值变化时重新执行，别给空数组 []
+
+Web3 典型场景——钱包地址变了但旧 effect 还在用老地址查 RPC，用 useRef 存地址
 
 **标准答案**：
 
@@ -451,6 +515,23 @@ function SwapForm() {
 
 **🗣️ 口述话术**：
 > "交易所最核心的三张表——订单表在 (user_id, status) 和 (symbol, created_at) 上建联合索引，因为用户查自己订单和按币种查行情是最频繁的；交易记录表给 from_address、to_address 和 hash 分别建索引，hash 用唯一索引；钱包表 user_id + network 联合索引。排查慢查询的流程是：先 EXPLAIN 看执行计划确认走了索引没有、检查 type 是不是 ALL 全表扫、避免 WHERE 里对列套函数导致索引失效、热点数据如行情和余额用 Redis 缓存短 TTL。"
+
+核心三表索引设计：
+
+订单表——(user_id, status) 联合索引（查我的订单）+ (symbol, created_at) 联合索引（按币种查行情）
+
+交易记录表——from_address、to_address 单独索引 + hash 唯一索引
+
+钱包表——(user_id, network) 联合索引
+
+慢查询排查清单：
+
+EXPLAIN 看执行计划——确认走索引没有，type 是不是 ALL（全表扫）
+
+避免索引失效——WHERE 里别对列套函数（如 DATE(created_at)），会导致不走索引
+
+热点数据加 Redis——行情、余额用短 TTL 缓存，挡住高频重复查询
+
 
 **标准答案**：
 
