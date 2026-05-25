@@ -35,7 +35,7 @@ CoderWhy 的 React 课程系统学习了 React Hooks、Redux Toolkit、React Rou
 做过电商和后台管理项目，能理解 Vue 和 React 的设计思想差异。
 
 Web3 方面，我用 go-ethereum 调用过以太坊合约，了解钱包连接（Wagmi）、
-交易签名、Gas 估算、多链适配，对 DEX 聚合器、杠杆交易系统有设计思路。
+交易签名、Gas 估算、多链适配，对 杠杆交易系统有设计思路。
 
 因为 HashKey 是持牌交易所，我也特别关注安全合规这块——地址校验、重放攻击防护、
 nonce 管理、审计日志，这些在我的项目里都有实践。
