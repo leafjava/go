@@ -1,5 +1,7 @@
 package main
 
+import "fmt"
+
 //func main() {
 //	// 创建 channel
 //	ch := make(chan int)
@@ -31,4 +33,15 @@ func main() {
 		ch <- 42
 	}()
 
+	value := <-ch
+	fmt.Println(value)
+
+	bufferedCh := make(chan string, 3)
+	bufferedCh <- "A"
+	bufferedCh <- "B"
+	bufferedCh <- "C"
+
+	fmt.Println(<-bufferedCh) // A
+	fmt.Println(<-bufferedCh) // B
+	fmt.Println(<-bufferedCh) // C
 }
