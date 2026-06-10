@@ -1,6 +1,6 @@
 module skillsbay-api
 
-go 1.25.10
+go 1.26.3
 
 require (
 	github.com/bytedance/gopkg v0.1.4 // indirect
