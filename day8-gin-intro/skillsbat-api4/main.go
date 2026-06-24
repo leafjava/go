@@ -1,7 +1,7 @@
 package main
 
 import (
-	"skillsbay-api3/handlers"
+	"skillsbay-api4/handlers"
 
 	"github.com/gin-gonic/gin"
 )
@@ -13,7 +13,7 @@ func main() {
 	{
 		wallets := api.Group("/wallets")
 		{
-			wallets.GET("/:address", handlers.Getwallet)
+			wallets.GET("/:address", handlers.GetWallet)
 			wallets.GET("/:address/balance", handlers.GetBalance)
 			wallets.POST("/:address/transfer", handlers.Transfer)
 		}
