@@ -9,7 +9,6 @@ import (
 func main() {
 	r := gin.Default()
 
-	// API v1 分组
 	v1 := r.Group("/api/v1")
 	{
 		v1.GET("/users", getUsers)
@@ -23,13 +22,11 @@ func main() {
 		}
 	}
 
-	// API v2 分组
 	v2 := r.Group("/api/v2")
 	{
 		v2.GET("/users", getUsersV2)
 	}
 
-	r.Run(":8080")
 }
 
 func getWallet(c *gin.Context) {
@@ -46,4 +43,18 @@ func getBalance(c *gin.Context) {
 		"address": address,
 		"balance": 10.5,
 	})
+}
+
+func getUsers(c *gin.Context) {
+	c.JSON(http.StatusOK, gin.H{
+		"version": "v1",
+	})
+}
+
+func createUser(c *gin.Context) {
+	c.JSON(http.StatusCreated, gin.H{"version": "v1"})
+}
+
+func getUsersV2(c *gin.Context) {
+	c.JSON(http.StatusOK, gin.H{"version": "v2"})
 }
