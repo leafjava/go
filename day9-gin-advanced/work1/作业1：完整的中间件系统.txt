@@ -1,0 +1,14 @@
+# 公开接口
+curl.exe http://localhost:8081/api/public
+
+# 没 token → 401
+curl.exe http://localhost:8081/api/profile
+
+# 有 token → 200
+curl.exe http://localhost:8081/api/profile -H "Authorization: Bearer test-token-123456"
+
+# 有 token 但不是 admin → 403
+curl.exe http://localhost:8081/api/admin/dashboard -H "Authorization: Bearer test-token-123456"
+
+# 有 token + admin 角色 → 200
+curl.exe http://localhost:8081/api/admin/dashboard -H "Authorization: Bearer test-token-123456" -H "X-User-Role: admin"
