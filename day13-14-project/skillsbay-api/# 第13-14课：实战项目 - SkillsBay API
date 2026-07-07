@@ -1,0 +1,24 @@
+测试
+
+cd D:\web3project\go\day13-14-project\skillsbay-api
+go run main.go
+
+# 注册
+curl -X POST http://localhost:8083/api/v1/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{"username":"linshen","email":"linshen@example.com","password":"password123"}'
+
+# 登录（获取 token）
+curl -X POST http://localhost:8083/api/v1/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"linshen@example.com","password":"password123"}'
+
+# 创建钱包（替换 YOUR_TOKEN）
+curl -X POST http://localhost:8083/api/v1/wallets \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -d '{"address":"0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb","network":"Ethereum"}'
+
+# 查询钱包
+curl -X GET http://localhost:8083/api/v1/wallets \
+  -H "Authorization: Bearer YOUR_TOKEN"

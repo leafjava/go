@@ -15,7 +15,7 @@ import (
 
 func main() {
 	// 1. 加载配置
-	if err := config.LoadConfig("config.yaml"); err != nil {
+	if err := config.LoadConfig("config/config.yaml"); err != nil {
 		panic("加载配置失败: " + err.Error())
 	}
 
