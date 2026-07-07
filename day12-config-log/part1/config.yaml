@@ -1,0 +1,38 @@
+server:
+  port: 8080
+  mode: debug  # debug, release, test
+
+database:
+  driver: sqlite
+  host: localhost
+  port: 5432
+  name: skillsbay
+  user: postgres
+  password: password
+  max_idle_conns: 10
+  max_open_conns: 100
+
+blockchain:
+  ethereum:
+    rpc_url: https://eth.llamarpc.com
+    chain_id: 1
+  ton:
+    rpc_url: https://toncenter.com/api/v2
+    api_key: your-api-key
+
+jwt:
+  secret: your-secret-key-change-in-production
+  expires_in: 86400  # 24 hours
+
+redis:
+  host: localhost
+  port: 6379
+  password: ""
+  db: 0
+
+log:
+  level: info  # debug, info, warn, error
+  file_path: logs/app.log
+  max_size: 100  # MB
+  max_backups: 3
+  max_age: 28  # days

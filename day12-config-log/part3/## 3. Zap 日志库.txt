@@ -1,0 +1,7 @@
+go run main.go
+
+# 测试正常请求
+curl http://localhost:8083/ping
+
+# 测试 panic 恢复
+curl http://localhost:8083/panic
