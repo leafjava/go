@@ -2,9 +2,12 @@ package main
 
 import (
 	"fmt"
-	"part1/middleware"
+	"skillsbay-api/config"
 	"skillsbay-api/database"
 	"skillsbay-api/handlers"
+	"skillsbay-api/logger"
+	"skillsbay-api/middleware"
+	"skillsbay-api/utils"
 
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
@@ -15,6 +18,9 @@ func main() {
 	if err := config.LoadConfig("config.yaml"); err != nil {
 		panic("加载配置失败: " + err.Error())
 	}
+
+	// 设置 JWT 密钥
+	utils.JWTSecret = config.AppConfig.JWT.Secret
 
 	// 2. 初始化日志
 	if err := logger.InitLogger(

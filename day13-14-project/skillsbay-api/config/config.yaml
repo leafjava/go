@@ -1,0 +1,18 @@
+server:
+  port: 8080
+  mode: debug
+
+database:
+  driver: sqlite
+  name: skillsbay.db
+
+jwt:
+  secret: your-secret-key-change-in-production
+  expires_in: 86400
+
+log:
+  level: info
+  file_path: logs/app.log
+  max_size: 100
+  max_backups: 3
+  max_age: 28

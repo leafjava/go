@@ -54,7 +54,9 @@ func (h *AuthHandler) Register(c *gin.Context) {
 		return
 	}
 
-	utils.SuccessResponse(c.gin.H)
+	utils.SuccessResponse(c, gin.H{
+			"user": user,
+		})
 
 }
 

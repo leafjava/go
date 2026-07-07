@@ -9,14 +9,14 @@ import (
 	"gorm.io/gorm"
 )
 
-var BD *gorm.DB
+var DB *gorm.DB
 
 func InitDB() error {
 	var err error
 
 	dsn := config.AppConfig.GetDatabaseDSN()
 
-	switch config.Appconfig.Database.Driver {
+	switch config.AppConfig.Database.Driver {
 	case "sqlite":
 		DB, err = gorm.Open(sqlite.Open(dsn), &gorm.Config{})
 	default:

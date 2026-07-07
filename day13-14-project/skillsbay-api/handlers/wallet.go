@@ -2,7 +2,9 @@ package handlers
 
 import (
 	"net/http"
-	"skillsbay-api4/models"
+	"skillsbay-api/database"
+	"skillsbay-api/models"
+	"skillsbay-api/utils"
 
 	"github.com/gin-gonic/gin"
 )
