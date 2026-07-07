@@ -1,0 +1,14 @@
+# 1. 启动服务
+cd D:\web3project\go\day12-config-log\part4
+go run main.go
+
+# 2. 测试健康检查
+curl http://localhost:8080/health
+# → {"status":"ok"}
+
+# 3. 测试 panic 恢复
+curl http://localhost:8080/panic
+# → {"error":"服务器内部错误"}
+
+# 4. 查看日志文件
+cat logs/app.log

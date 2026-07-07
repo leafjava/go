@@ -1,0 +1,4 @@
+{"level":"\u001b[34mINFO\u001b[0m","time":"2026-07-07T10:23:02.780+0800","caller":"part4/main.go:46","msg":"服务启动","addr":":8080","mode":"debug"}
+{"level":"\u001b[31mFATAL\u001b[0m","time":"2026-07-07T10:23:02.788+0800","caller":"part4/main.go:52","msg":"服务启动失败","error":"listen tcp :8080: bind: Only one usage of each socket address (protocol/network address/port) is normally permitted.","stacktrace":"main.main\n\tD:/web3project/go/day12-config-log/part4/main.go:52\nruntime.main\n\tC:/Users/Administrator/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.3.windows-amd64/src/runtime/proc.go:290"}
+{"level":"\u001b[34mINFO\u001b[0m","time":"2026-07-07T10:23:48.525+0800","caller":"part4/main.go:46","msg":"服务启动","addr":":8083","mode":"debug"}
+{"level":"\u001b[34mINFO\u001b[0m","time":"2026-07-07T10:23:56.919+0800","caller":"middleware/middleware.go:23","msg":"HTTP请求","method":"GET","path":"/health","query":"","status":200,"latency":0,"ip":"::1","user_agent":"curl/8.13.0"}

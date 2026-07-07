@@ -1,481 +1,666 @@
 # 第24课：Go 面试高频题
 
-> 精选 Web3 后端开发最常见的 Go 面试题 | 理论 + 代码实战
+> 学习时间：3-4小时 | 难度：⭐⭐⭐⭐
 
 ## 📋 本课目标
 
-- 掌握 Go 面试中的高频考点
-- 理解底层原理，不只是背答案
-- 能用代码演示关键概念
-- 为 Web3 后端面试做准备
+- 掌握 Go 高频面试题的标准回答
+- 理解 Go 运行时核心机制
+- 能够回答 Web3 相关的 Go 面试题
+- 掌握面试中的代码手写题
 
----
+## 1. Go 语言基础
 
-## 1️⃣ 基础语法类
+### Q1: Go 的并发模型？Goroutine 和线程的区别？
 
-### Q1: Go 的三种变量声明方式有什么区别？
+**标准回答：**
+
+Go 使用 CSP（Communicating Sequential Processes）并发模型，核心是 Goroutine + Channel。
+
+| 特性 | Goroutine | 操作系统线程 |
+|------|-----------|-------------|
+| 初始栈大小 | 2KB（动态增长） | ~1MB（固定） |
+| 调度器 | Go 运行时（用户态） | 操作系统（内核态） |
+| 切换成本 | ~200ns | ~1-2µs |
+| 创建数量 | 数十万 | 数千 |
+| 通信方式 | Channel | 共享内存 |
+
+**GMP 调度模型：**
+- **G（Goroutine）**：待执行的任务
+- **M（Machine）**：操作系统线程，执行 G
+- **P（Processor）**：逻辑处理器，维护 G 的本地队列，数量 = GOMAXPROCS
 
 ```go
-// 方式1：完整声明（可用于全局变量）
-var name string = "Alice"
+// 设置 P 的数量
+runtime.GOMAXPROCS(runtime.NumCPU())
+```
 
-// 方式2：类型推断（可用于全局变量）
-var age = 25
+**工作窃取（Work Stealing）**：当某个 P 的本地队列为空，会从其他 P 的队列中窃取一半的 G。
 
-// 方式3：短声明（只能在函数内使用）
-func main() {
-    city := "Beijing"  // 最常用
+### Q2: Channel 的底层实现？
+
+**标准回答：**
+
+Channel 底层是一个 `hchan` 结构体：
+
+```go
+type hchan struct {
+    qcount   uint           // 队列中元素数量
+    dataqsiz uint           // 环形队列大小
+    buf      unsafe.Pointer // 环形队列指针
+    elemsize uint16         // 元素大小
+    closed   uint32         // 是否已关闭
+    sendx    uint           // 发送索引
+    recvx    uint           // 接收索引
+    recvq    waitq          // 等待接收的 goroutine 队列
+    sendq    waitq          // 等待发送的 goroutine 队列
+    lock     mutex          // 互斥锁
 }
 ```
 
-**面试要点**：
-- `:=` 只能在函数内使用
-- `var` 可以声明全局变量
-- 短声明更简洁，是 Go 的惯用写法
-
----
-
-### Q2: `new` 和 `make` 的区别？
-
-```go
-// new：分配内存并返回指针，值为零值
-p := new(int)        // *int 类型，值为 0
-fmt.Println(*p)      // 0
-
-// make：只用于 slice、map、channel，返回初始化后的值
-s := make([]int, 5)  // []int 类型，长度为5
-m := make(map[string]int)
-ch := make(chan int)
-```
-
-**记忆口诀**：
-- `new` → 任何类型，返回指针
-- `make` → 只能 slice/map/channel，返回值本身
-
----
-
-### Q3: 值传递 vs 引用传递？
+**关键特性：**
+- 使用**环形队列**存储缓冲数据
+- 有**等待队列**（sendq/recvq）处理阻塞的 goroutine
+- 向已关闭的 channel 发送数据 → **panic**
+- 从已关闭的 channel 读取 → 返回零值，ok=false
+- 关闭 nil channel → **panic**
+- 向 nil channel 发送/接收 → **永久阻塞**
 
 ```go
-// Go 只有值传递！但有些类型"看起来"像引用传递
+// 安全的 channel 操作
+func SafeClose() {
+    ch := make(chan int, 10)
 
-// 1. 基本类型：真正的值传递
-func changeInt(x int) {
-    x = 100  // 不影响外部
-}
-
-// 2. 指针：传递的是指针的副本，但指向同一地址
-func changePointer(p *int) {
-    *p = 100  // 会影响外部
-}
-
-// 3. slice/map/channel：传递的是底层数据结构的引用
-func changeSlice(s []int) {
-    s[0] = 100  // 会影响外部
-}
-```
-
-**面试要点**：Go 没有引用传递，但 slice/map/channel 内部包含指针。
-
----
-
-## 2️⃣ 并发编程类（高频！）
-
-### Q4: Goroutine 和线程的区别？
-
-| 特性 | Goroutine | 线程 |
-|------|-----------|------|
-| 内存占用 | 2KB 起步 | 1-2MB |
-| 调度方式 | Go 运行时调度（M:N） | 操作系统调度 |
-| 切换成本 | 低（用户态） | 高（内核态） |
-| 数量 | 可创建百万级 | 通常几千个 |
-
-```go
-// 创建 10000 个 goroutine 很轻松
-for i := 0; i < 10000; i++ {
-    go func(id int) {
-        fmt.Println(id)
-    }(i)
-}
-```
-
----
-
-### Q5: Channel 的三种操作会阻塞吗？
-
-```go
-ch := make(chan int)
-
-// 1. 发送：无缓冲 channel 会阻塞，直到有接收者
-ch <- 42  // 阻塞
-
-// 2. 接收：会阻塞，直到有数据
-val := <-ch  // 阻塞
-
-// 3. 关闭：不会阻塞
-close(ch)
-
-// 带缓冲的 channel
-ch2 := make(chan int, 3)
-ch2 <- 1  // 不阻塞（缓冲未满）
-ch2 <- 2
-ch2 <- 3
-ch2 <- 4  // 阻塞（缓冲已满）
-```
-
-**面试要点**：
-- 无缓冲 channel：发送和接收都会阻塞
-- 有缓冲 channel：缓冲满时发送阻塞，缓冲空时接收阻塞
-
----
-
-### Q6: 如何避免 Goroutine 泄漏？
-
-```go
-// ❌ 错误：goroutine 永远不会退出
-func leak() {
-    ch := make(chan int)
+    // 生产者
     go func() {
-        val := <-ch  // 永远阻塞，因为没有发送者
-        fmt.Println(val)
-    }()
-}
-
-// ✅ 正确：使用 context 控制生命周期
-func noLeak(ctx context.Context) {
-    ch := make(chan int)
-    go func() {
-        select {
-        case val := <-ch:
-            fmt.Println(val)
-        case <-ctx.Done():
-            return  // 超时或取消时退出
+        for i := 0; i < 10; i++ {
+            ch <- i
         }
+        close(ch) // 生产者负责关闭
     }()
+
+    // 消费者
+    for v := range ch {
+        fmt.Println(v)
+    }
 }
 ```
 
----
+### Q3: Slice 的底层结构和扩容机制？
 
-### Q7: `sync.Mutex` vs `sync.RWMutex`？
+**标准回答：**
 
-```go
-// Mutex：读写都互斥
-var mu sync.Mutex
-mu.Lock()
-// 临界区
-mu.Unlock()
-
-// RWMutex：读读不互斥，读写互斥
-var rwMu sync.RWMutex
-
-// 读锁（多个 goroutine 可同时持有）
-rwMu.RLock()
-// 读操作
-rwMu.RUnlock()
-
-// 写锁（独占）
-rwMu.Lock()
-// 写操作
-rwMu.Unlock()
-```
-
-**使用场景**：
-- 读多写少 → `RWMutex`
-- 读写均衡 → `Mutex`
-
----
-
-## 3️⃣ 数据结构类
-
-### Q8: Slice 的底层结构？
+Slice 底层结构：
 
 ```go
 type slice struct {
-    array unsafe.Pointer  // 指向底层数组
-    len   int             // 当前长度
-    cap   int             // 容量
-}
-
-// 扩容机制
-s := make([]int, 0, 4)
-fmt.Println(len(s), cap(s))  // 0 4
-
-s = append(s, 1, 2, 3, 4)
-fmt.Println(len(s), cap(s))  // 4 4
-
-s = append(s, 5)  // 触发扩容
-fmt.Println(len(s), cap(s))  // 5 8（容量翻倍）
-```
-
-**面试要点**：
-- Slice 不是数组，是对数组的引用
-- 扩容规则：容量 < 1024 时翻倍，>= 1024 时增长 25%
-
----
-
-### Q9: Map 是线程安全的吗？
-
-```go
-// ❌ 普通 map 不是线程安全的
-m := make(map[string]int)
-go func() { m["key"] = 1 }()
-go func() { m["key"] = 2 }()  // 可能 panic
-
-// ✅ 方案1：使用 sync.Map
-var sm sync.Map
-sm.Store("key", 1)
-val, ok := sm.Load("key")
-
-// ✅ 方案2：使用 Mutex 保护
-var mu sync.Mutex
-mu.Lock()
-m["key"] = 1
-mu.Unlock()
-```
-
----
-
-### Q10: 如何判断 Map 的 Key 是否存在？
-
-```go
-m := map[string]int{"age": 25}
-
-// ❌ 错误：无法区分"不存在"和"值为0"
-val := m["age"]
-
-// ✅ 正确：使用 comma ok 模式
-val, ok := m["age"]
-if ok {
-    fmt.Println("存在:", val)
-} else {
-    fmt.Println("不存在")
+    array unsafe.Pointer // 指向底层数组的指针
+    len   int            // 当前长度
+    cap   int            // 容量
 }
 ```
 
----
-
-## 4️⃣ 接口与反射类
-
-### Q11: 接口的底层结构？
+**扩容规则（Go 1.18+）：**
 
 ```go
-// 空接口（interface{}）
-type eface struct {
-    _type *_type          // 类型信息
-    data  unsafe.Pointer  // 数据指针
-}
-
-// 非空接口
-type iface struct {
-    tab  *itab           // 类型 + 方法表
-    data unsafe.Pointer  // 数据指针
-}
+// 需要的容量 > 当前容量的 2 倍 → 直接扩容到需要的容量
+// 当前容量 < 256 → 扩容为 2 倍
+// 当前容量 >= 256 → 使用公式 newcap += (newcap + 3*256) / 4
 ```
 
-**面试要点**：
-- 接口变量包含：类型信息 + 数据指针
-- `nil` 接口：类型和数据都为 `nil`
-
----
-
-### Q12: 接口的 `nil` 判断陷阱？
+**常见陷阱：**
 
 ```go
-func returnsError() error {
-    var p *MyError = nil
-    return p  // 返回的不是 nil！
+// 陷阱1: append 可能返回新切片，新旧切片共享底层数组
+func Trap1() {
+    a := make([]int, 0, 2)
+    b := append(a, 1)
+    c := append(a, 2)
+    // b[0] == 2! 因为 a、b、c 共享底层数组
 }
 
-func main() {
-    err := returnsError()
-    if err != nil {  // true！
-        fmt.Println("有错误")  // 会执行
+// 陷阱2: range 中的变量复用
+func Trap2() {
+    s := []int{1, 2, 3}
+    for _, v := range s {
+        go func() {
+            fmt.Println(v) // 可能都打印 3
+        }()
     }
+    // 修复: go func(val int) { fmt.Println(val) }(v)
 }
 ```
 
-**原因**：接口包含类型信息，即使数据为 `nil`，类型不为 `nil`。
+### Q4: defer 的执行顺序和规则？
 
-**解决方案**：
+**标准回答：**
+
 ```go
-func returnsError() error {
-    var p *MyError = nil
-    if p == nil {
-        return nil  // 显式返回 nil
-    }
-    return p
+// 规则1: defer 注册顺序与执行顺序相反（后进先出，栈）
+func Rule1() {
+    defer fmt.Println("1") // 第三个执行
+    defer fmt.Println("2") // 第二个执行
+    defer fmt.Println("3") // 第一个执行
+    // 输出: 3 2 1
 }
-```
 
----
+// 规则2: defer 的参数在注册时求值（不是执行时）
+func Rule2() {
+    x := 1
+    defer fmt.Println(x) // x=1 在注册时已确定
+    x = 2
+    // 输出: 1（不是 2）
+}
 
-## 5️⃣ 错误处理类
-
-### Q13: `panic` 和 `recover` 的使用场景？
-
-```go
-func safeDivide(a, b int) (result int) {
+// 规则3: defer 可以修改命名返回值
+func Rule3() (result int) {
     defer func() {
-        if r := recover(); r != nil {
-            fmt.Println("捕获 panic:", r)
-            result = 0
-        }
+        result++ // 会修改返回值
     }()
-    
-    return a / b  // b=0 时会 panic
-}
-
-func main() {
-    fmt.Println(safeDivide(10, 0))  // 输出: 0
+    return 5 // 实际返回 6
 }
 ```
 
-**面试要点**：
-- `panic` 用于不可恢复的错误（如数组越界）
-- `recover` 只能在 `defer` 中使用
-- 生产代码应该用 `error` 而不是 `panic`
-
----
-
-## 6️⃣ 性能优化类
-
-### Q14: 如何避免内存逃逸？
+### Q5: new 和 make 的区别？
 
 ```go
-// ❌ 逃逸到堆：返回局部变量的指针
-func escape() *int {
-    x := 42
-    return &x  // x 逃逸到堆
+// new：分配内存并返回指针，值为零值（适用于所有类型）
+p := new(int)   // *int 类型，值为 0
+fmt.Println(*p) // 0
+
+// make：只用于 slice、map、channel，返回初始化后的值
+s := make([]int, 5)     // []int，长度为5
+m := make(map[string]int)
+ch := make(chan int, 10)
+```
+
+### Q6: Map 的底层实现和并发安全？
+
+**标准回答：**
+
+Go 的 map 底层是**哈希表**，使用**拉链法**解决哈希冲突。Map **不是并发安全的**，并发读写会 **fatal error: concurrent map writes**。
+
+**扩容机制：**
+- 负载因子 > 6.5 → **增量扩容**（创建 2 倍大小的桶数组）
+- 溢出桶过多 → **等量扩容**（重新整理）
+- 扩容是**渐进式**的（每次访问迁移一部分）
+
+```go
+// 并发安全方案
+// 方案1: sync.RWMutex
+type SafeMap struct {
+    mu sync.RWMutex
+    m  map[string]int
 }
 
-// ✅ 不逃逸：返回值
-func noEscape() int {
+// 方案2: sync.Map（读多写少场景）
+var sm sync.Map
+sm.Store("key", "value")
+v, ok := sm.Load("key")
+```
+
+## 2. Go 运行时
+
+### Q7: Go 的 GC（垃圾回收）机制？
+
+**标准回答：**
+
+Go 使用**并发标记-清除（Concurrent Mark-Sweep）**算法，采用**三色标记法**。
+
+**三色标记过程：**
+```
+1. 初始标记（STW）    — 扫描根对象，标记为灰色
+2. 并发标记           — 从灰色对象出发，标记可达对象
+3. 重新标记（STW）    — 处理并发标记期间的变更（Go 1.8+ 混合写屏障消除了此步骤）
+4. 并发清除           — 回收白色对象
+```
+
+**GC 触发条件：**
+- 内存分配达到阈值（GOGC 环境变量，默认 100，内存翻倍时触发）
+- 定时触发（2 分钟）
+- 手动触发（runtime.GC()）
+
+```go
+// GC 调优
+debug.SetGCPercent(50)  // 更频繁的 GC，内存使用更低
+debug.SetGCPercent(200) // 更少的 GC，但内存使用更高
+
+// 查看 GC 统计
+var stats debug.GCStats
+debug.ReadGCStats(&stats)
+fmt.Printf("GC 次数: %d, 总暂停时间: %v\n", stats.NumGC, stats.PauseTotal)
+```
+
+### Q8: Go 的内存逃逸分析？
+
+**标准回答：**
+
+编译器决定变量分配在栈上还是堆上：
+
+| 位置 | 回收方式 | 速度 |
+|------|---------|------|
+| 栈 | 函数返回后自动回收 | 快速 |
+| 堆 | 需要 GC 回收 | 较慢 |
+
+**常见逃逸场景：**
+
+```go
+// 逃逸场景1: 返回局部变量指针
+func escape1() *int {
     x := 42
-    return x  // x 在栈上
+    return &x // x 逃逸到堆
 }
 
-// 查看逃逸分析
+// 逃逸场景2: interface{} 参数
+func escape2(v interface{}) { // v 可能逃逸
+    fmt.Println(v)
+}
+
+// 逃逸场景3: 闭包引用
+func escape3() func() int {
+    x := 0
+    return func() int {
+        x++    // x 逃逸
+        return x
+    }
+}
+
+// 不逃逸: 切片容量在编译时确定
+func noEscape() []int {
+    s := make([]int, 10) // 不逃逸
+    return s
+}
+
+// 查看逃逸分析:
 // go build -gcflags="-m" main.go
 ```
 
-**面试要点**：
-- 栈分配比堆分配快
-- 返回指针、闭包、接口赋值可能导致逃逸
+## 3. Go Web 开发面试
 
----
+### Q9: Gin 的中间件原理？如何实现请求链路追踪？
 
-### Q15: `defer` 的性能开销？
+**标准回答：**
 
-```go
-// defer 有一定开销，但 Go 1.14+ 已优化
-
-// 高频路径避免 defer
-func fastPath() {
-    mu.Lock()
-    // 快速操作
-    mu.Unlock()
-}
-
-// 复杂逻辑使用 defer（可读性更重要）
-func complexPath() {
-    mu.Lock()
-    defer mu.Unlock()
-    // 多个 return 路径
-}
-```
-
----
-
-## 7️⃣ Web3 相关（加分项）
-
-### Q16: 如何安全处理私钥？
+Gin 中间件本质是 `gin.HandlerFunc` 的链式调用，通过 `c.Next()` 控制执行流程。
 
 ```go
-// ❌ 错误：硬编码私钥
-privateKey := "0x1234..."
+// 中间件执行顺序（洋葱模型）：
+// Middleware1 Before → Middleware2 Before → Handler
+// → Middleware2 After → Middleware1 After
 
-// ✅ 正确：从环境变量读取
-privateKey := os.Getenv("PRIVATE_KEY")
-if privateKey == "" {
-    log.Fatal("PRIVATE_KEY not set")
-}
+// 自定义链路追踪中间件
+func TracingMiddleware() gin.HandlerFunc {
+    return func(c *gin.Context) {
+        traceID := c.GetHeader("X-Trace-ID")
+        if traceID == "" {
+            traceID = generateTraceID()
+        }
+        c.Set("trace_id", traceID)
+        c.Header("X-Trace-ID", traceID)
 
-// ✅ 更好：使用 KMS 或 Vault
-```
-
----
-
-### Q17: 如何处理区块链的并发请求？
-
-```go
-// 使用 worker pool 限制并发
-func processTransactions(txs []string) {
-    const workers = 10
-    sem := make(chan struct{}, workers)
-    
-    for _, tx := range txs {
-        sem <- struct{}{}  // 获取令牌
-        go func(txHash string) {
-            defer func() { <-sem }()  // 释放令牌
-            // 处理交易
-        }(tx)
+        start := time.Now()
+        c.Next()
+        
+        latency := time.Since(start)
+        log.Printf("[%s] %s %s %d %v",
+            traceID, c.Request.Method, c.Request.URL.Path,
+            c.Writer.Status(), latency,
+        )
     }
 }
 ```
 
----
+### Q10: 如何实现优雅关闭？
 
-## 🎯 面试准备建议
-
-### 1. 必须掌握的知识点
-- ✅ Goroutine 和 Channel
-- ✅ Slice 和 Map 的底层原理
-- ✅ 接口的使用和陷阱
-- ✅ 错误处理最佳实践
-- ✅ 并发安全（Mutex、RWMutex、sync.Map）
-
-### 2. 加分项
-- Context 的使用场景
-- 性能优化技巧（逃逸分析、内存对齐）
-- Go Modules 和依赖管理
-- 单元测试和基准测试
-
-### 3. 实战演示
-面试时可能要求现场写代码，准备这些：
-- 实现一个线程安全的缓存
-- 用 Channel 实现生产者-消费者模式
-- 处理超时和取消的 HTTP 请求
-
----
-
-## 📝 今日作业
-
-### 作业1：实现线程安全的计数器
 ```go
-type SafeCounter struct {
-    // TODO: 添加字段
-}
+func GracefulShutdown() {
+    srv := &http.Server{Addr: ":8080"}
 
-func (c *SafeCounter) Inc() {
-    // TODO: 实现
-}
+    go func() {
+        if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+            log.Fatal(err)
+        }
+    }()
 
-func (c *SafeCounter) Value() int {
-    // TODO: 实现
+    quit := make(chan os.Signal, 1)
+    signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+    <-quit
+
+    log.Println("正在关闭服务...")
+    ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+    defer cancel()
+
+    if err := srv.Shutdown(ctx); err != nil {
+        log.Fatal("强制关闭:", err)
+    }
+    log.Println("服务已退出")
 }
 ```
 
-### 作业2：用 Channel 实现超时控制
+## 4. Web3 专项面试题
+
+### Q11: 在 Go 中如何安全地管理私钥？
+
 ```go
-func fetchWithTimeout(url string, timeout time.Duration) (string, error) {
-    // TODO: 实现
-    // 提示：使用 select + time.After
+// 1. 从环境变量读取（推荐）
+func LoadPrivateKeyFromEnv() (*ecdsa.PrivateKey, error) {
+    keyHex := os.Getenv("ETHEREUM_PRIVATE_KEY")
+    if keyHex == "" {
+        return nil, fmt.Errorf("环境变量 ETHEREUM_PRIVATE_KEY 未设置")
+    }
+    return crypto.HexToECDSA(strings.TrimPrefix(keyHex, "0x"))
 }
+
+// 2. 内存安全：使用后清零
+type SecurePrivateKey struct {
+    key *ecdsa.PrivateKey
+}
+
+func (s *SecurePrivateKey) Clear() {
+    if s.key != nil {
+        s.key.D.SetInt64(0) // 清零私钥大整数
+        s.key = nil
+    }
+    runtime.GC() // 建议触发 GC
+}
+```
+
+### Q12: 如何处理区块链交易的重试和 nonce 管理？
+
+```go
+// Nonce 管理器
+type NonceManager struct {
+    mu           sync.Mutex
+    client       *ethclient.Client
+    address      common.Address
+    currentNonce uint64
+}
+
+func NewNonceManager(client *ethclient.Client, address common.Address) (*NonceManager, error) {
+    nonce, err := client.PendingNonceAt(context.Background(), address)
+    if err != nil {
+        return nil, err
+    }
+    return &NonceManager{
+        client:       client,
+        address:      address,
+        currentNonce: nonce,
+    }, nil
+}
+
+func (nm *NonceManager) NextNonce() uint64 {
+    nm.mu.Lock()
+    defer nm.mu.Unlock()
+    nonce := nm.currentNonce
+    nm.currentNonce++
+    return nonce
+}
+
+// 交易重试（指数退避）
+func SendWithRetry(client *ethclient.Client, tx *types.Transaction, maxRetries int) error {
+    for i := 0; i < maxRetries; i++ {
+        err := client.SendTransaction(context.Background(), tx)
+        if err == nil {
+            return nil
+        }
+        if strings.Contains(err.Error(), "nonce too low") {
+            return fmt.Errorf("nonce 已被使用: %w", err)
+        }
+        time.Sleep(time.Duration(1<<uint(i)) * time.Second) // 1s, 2s, 4s...
+    }
+    return fmt.Errorf("发送失败，已重试 %d 次", maxRetries)
+}
+```
+
+### Q13: 如何保证区块链交易幂等性？
+
+```go
+// 使用唯一 Key 防止重复提交
+func (m *IdempotentTxManager) SendTransaction(
+    ctx context.Context,
+    idempotencyKey string,
+    txReq TransactionRequest,
+) (string, error) {
+    // 1. 检查是否已处理
+    existing, err := m.rdb.Get(ctx, "idempotent:"+idempotencyKey).Result()
+    if err == nil {
+        return existing, nil // 返回已有结果
+    }
+
+    // 2. 发送交易
+    txHash, err := m.doSendTransaction(txReq)
+    if err != nil {
+        return "", err
+    }
+
+    // 3. 记录结果（24小时过期）
+    m.rdb.Set(ctx, "idempotent:"+idempotencyKey, txHash, 24*time.Hour)
+    return txHash, nil
+}
+```
+
+## 5. 手写代码题
+
+### 题1: 实现并发安全的计数器
+
+```go
+type Counter struct {
+    value int64
+}
+
+func (c *Counter) Inc() {
+    atomic.AddInt64(&c.value, 1)
+}
+
+func (c *Counter) Value() int64 {
+    return atomic.LoadInt64(&c.value)
+}
+```
+
+### 题2: 实现带超时的 goroutine 控制
+
+```go
+func DoWithTimeout(fn func() error, timeout time.Duration) error {
+    done := make(chan error, 1)
+
+    go func() {
+        done <- fn()
+    }()
+
+    select {
+    case err := <-done:
+        return err
+    case <-time.After(timeout):
+        return fmt.Errorf("操作超时 (%v)", timeout)
+    }
+}
+```
+
+### 题3: 实现 Worker Pool
+
+```go
+type WorkerPool struct {
+    tasks chan func()
+    wg    sync.WaitGroup
+}
+
+func NewWorkerPool(workerCount int) *WorkerPool {
+    wp := &WorkerPool{
+        tasks: make(chan func(), 100),
+    }
+
+    for i := 0; i < workerCount; i++ {
+        wp.wg.Add(1)
+        go func() {
+            defer wp.wg.Done()
+            for task := range wp.tasks {
+                task()
+            }
+        }()
+    }
+
+    return wp
+}
+
+func (wp *WorkerPool) Submit(task func()) {
+    wp.tasks <- task
+}
+
+func (wp *WorkerPool) Shutdown() {
+    close(wp.tasks)
+    wp.wg.Wait()
+}
+```
+
+### 题4: 实现 LRU 缓存
+
+```go
+type LRUCache struct {
+    capacity int
+    cache    map[int]*list.Element
+    list     *list.List
+}
+
+type entry struct {
+    key   int
+    value int
+}
+
+func NewLRUCache(capacity int) *LRUCache {
+    return &LRUCache{
+        capacity: capacity,
+        cache:    make(map[int]*list.Element),
+        list:     list.New(),
+    }
+}
+
+func (c *LRUCache) Get(key int) int {
+    if elem, ok := c.cache[key]; ok {
+        c.list.MoveToFront(elem)
+        return elem.Value.(*entry).value
+    }
+    return -1
+}
+
+func (c *LRUCache) Put(key, value int) {
+    if elem, ok := c.cache[key]; ok {
+        c.list.MoveToFront(elem)
+        elem.Value.(*entry).value = value
+        return
+    }
+
+    if c.list.Len() >= c.capacity {
+        oldest := c.list.Back()
+        if oldest != nil {
+            c.list.Remove(oldest)
+            delete(c.cache, oldest.Value.(*entry).key)
+        }
+    }
+
+    elem := c.list.PushFront(&entry{key, value})
+    c.cache[key] = elem
+}
+```
+
+### 题5: 交替打印奇偶数（两个 goroutine）
+
+```go
+func PrintOddEven() {
+    chOdd := make(chan struct{}, 1)
+    chEven := make(chan struct{}, 1)
+    done := make(chan struct{})
+
+    // 打印奇数
+    go func() {
+        for i := 1; i <= 99; i += 2 {
+            <-chOdd
+            fmt.Println("奇数:", i)
+            chEven <- struct{}{}
+        }
+        <-chOdd
+        close(done)
+    }()
+
+    // 打印偶数
+    go func() {
+        for i := 2; i <= 100; i += 2 {
+            <-chEven
+            fmt.Println("偶数:", i)
+            chOdd <- struct{}{}
+        }
+    }()
+
+    chOdd <- struct{}{} // 启动
+    <-done
+}
+```
+
+## 6. 面试准备清单
+
+### 技术知识体系
+
+| 模块 | 必须掌握 | 加分项 |
+|------|---------|--------|
+| Go 基础 | Goroutine/Channel、Slice/Map 底层、defer、接口 | 汇编分析、Plan9 |
+| Go 运行时 | GC 三色标记、GMP 调度、逃逸分析 | 源码级理解 |
+| Web 框架 | Gin 中间件、JWT 认证、RESTful 设计 | gRPC、GraphQL |
+| 数据库 | GORM 操作、索引优化、事务 | 分库分表、读写分离 |
+| 缓存 | Redis 数据结构、缓存策略、Pipeline | Redis Cluster、哨兵 |
+| 消息队列 | Redis Stream、Pub/Sub | RabbitMQ、Kafka |
+| 区块链 | go-ethereum、交易签名、合约调用、事件监听 | TON、Solana |
+| 工程化 | 单元测试、Docker、CI/CD、日志 | 链路追踪、监控告警 |
+
+### 行为面试要点
+
+- **项目描述**：STAR 法则（Situation → Task → Action → Result）
+- **技术决策**：为什么选择 Go？为什么用 Gin 而不是其他框架？
+- **问题解决**：遇到的难点和解决方案，用数字说明效果
+- **团队协作**：Code Review、技术分享、文档建设
+
+## 📝 作业
+
+### 作业1：整理个人面试题库
+
+```markdown
+# 个人面试准备
+
+## 自我介绍（30秒版本）
+- 姓名 + 技术栈（Go / Gin / GORM / Web3）
+- 核心项目经验（区块链交互服务）
+- 技术亮点（高并发、多链支持）
+
+## 项目介绍（3分钟版本）
+- 背景：为什么做这个项目
+- 架构：整体设计思路
+- 难点：技术挑战和解决方案
+- 成果：用数字说话（QPS、响应时间、成本节省）
+
+## 高频问题自测
+- [ ] Goroutine 和线程的区别
+- [ ] Channel 底层实现
+- [ ] GC 机制
+- [ ] 内存逃逸
+- [ ] Slice 扩容
+- [ ] defer 执行规则
+- [ ] interface nil 陷阱
+- [ ] GMP 调度模型
+```
+
+### 作业2：模拟面试编程题
+
+```go
+// TODO: 手写以下代码（不借助 IDE），限时 15 分钟/题
+// 1. 并发安全的 map（使用 sync.RWMutex）
+// 2. 带超时和重试的 HTTP 请求
+// 3. 生产者-消费者模式（buffer channel）
+// 4. 交替打印奇偶数（两个 goroutine）
+// 5. 实现一个简单的 rate limiter
 ```
 
 ### 作业3：找出以下代码的问题
+
 ```go
+// 问题1：这个函数有什么问题？
 func buggyCode() {
     var wg sync.WaitGroup
     for i := 0; i < 5; i++ {
@@ -487,17 +672,44 @@ func buggyCode() {
     }
     wg.Wait()
 }
+
+// 问题2：这个接口判断正确吗？
+func returnsError() error {
+    var p *MyError = nil
+    return p  // 返回值是 nil 吗？
+}
+
+// 问题3：这段代码安全吗？
+func modifyMap() {
+    m := make(map[int]int)
+    go func() {
+        for i := 0; i < 1000; i++ {
+            m[i] = i
+        }
+    }()
+    go func() {
+        for i := 0; i < 1000; i++ {
+            fmt.Println(m[i])
+        }
+    }()
+}
 ```
 
----
+## 🎯 检查点
+
+- ✅ 能够回答 Go 基础高频面试题
+- ✅ 理解 Go 运行时核心机制
+- ✅ 能够回答 Web3 专项问题
+- ✅ 能手写关键代码模板
+- ✅ 准备好面试自我介绍和项目介绍
 
 ## 🔗 扩展阅读
 
 - [Go 面试题汇总](https://github.com/lifei6671/interview-go)
 - [Go 语言高性能编程](https://geektutu.com/post/high-performance-go.html)
 - [Effective Go](https://go.dev/doc/effective_go)
+- [Go 源码阅读](https://github.com/qcrao/Go-Questions)
 
----
+## ⏭️ 下一课
 
-**下一课**：[第25-28课：毕业项目](./day25-28-final-project.md)
-
+[第25-28课：毕业项目 - 完整 Web3 后端](./day25-28-final-project.md)
