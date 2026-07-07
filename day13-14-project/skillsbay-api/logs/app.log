@@ -1,0 +1,2 @@
+{"level":"\u001b[34mINFO\u001b[0m","time":"2026-07-07T16:27:52.091+0800","caller":"skillsbay-api/main.go:78","msg":"服务启动","addr":":8083"}
+{"level":"\u001b[34mINFO\u001b[0m","time":"2026-07-07T16:28:30.739+0800","caller":"middleware/logger.go:22","msg":"HTTP请求","method":"POST","path":"/api/v1/auth/register","query":"","status":200,"latency":0.0643212,"ip":"::1","user_agent":"PostmanRuntime/7.51.1"}
