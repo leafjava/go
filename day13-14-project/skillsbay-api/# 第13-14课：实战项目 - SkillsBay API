@@ -22,3 +22,4 @@ curl -X POST http://localhost:8083/api/v1/wallets \
 # 查询钱包
 curl -X GET http://localhost:8083/api/v1/wallets \
   -H "Authorization: Bearer YOUR_TOKEN"
+
