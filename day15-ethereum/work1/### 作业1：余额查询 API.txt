@@ -1,0 +1,5 @@
+```go
+// TODO: 实现余额查询 API
+// GET /api/v1/ethereum/balance/:address
+// 返回 ETH 余额和 USD 价值
+```
