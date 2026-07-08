@@ -8,6 +8,7 @@ import (
 
 	"github.com/xssnick/tonutils-go/address"
 	"github.com/xssnick/tonutils-go/liteclient"
+	"github.com/xssnick/tonutils-go/tlb"
 	"github.com/xssnick/tonutils-go/ton"
 	"github.com/xssnick/tonutils-go/ton/wallet"
 )
@@ -22,6 +23,12 @@ func main() {
 
 	api := ton.NewAPIClient(client)
 
+	// 获取主链最新区块
+	block, err := api.GetMasterchainInfo(context.Background())
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	// 从助记词恢复钱包
 	words := strings.Split("your mnemonic words here", " ")
 	w, err := wallet.FromSeed(api, words, wallet.V4R2)
@@ -32,21 +39,26 @@ func main() {
 	fmt.Printf("发送方地址: %s\n", w.Address().String())
 
 	// 接收方地址
-	toAddr := address.MustParseAddr("EQCkR1cGZxYbG6QrGqKJ8HxSPfI3NZ9sNjCpHlLHyVTGc5Gq")
+	toAddr := address.MustParseAddr("EQA0gvftODUs9itSl5whd01IxERToRZkA_-tsriaZPxuRkS4")
+
+	// 构造转账 body（备注）
+	body, err := wallet.CreateCommentCell("转账测试")
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	// 转账 0.05 TON
-	// 注意：转账时附带 comment（备注）
 	err = w.Send(context.Background(), &wallet.Message{
-		Mode: wallet.MsgWithRemainingValue,
-		InternalMessage: &wallet.InternalMessage{
+		Mode: wallet.PayGasSeparately + wallet.IgnoreErrors,
+		InternalMessage: &tlb.InternalMessage{
 			IHRDisabled: false,
 			Bounce:      false,
 			Bounced:     false,
 			SrcAddr:     w.WalletAddress(),
 			DstAddr:     toAddr,
-			Amount:      ton.MustToNano("0.05"),
+			Amount:      tlb.MustFromTON("0.05"),
 			StateInit:   nil,
-			Bode:        wallet.Comment("转账测试"),
+			Body:        body,
 		},
 	}, true)
 
@@ -57,7 +69,7 @@ func main() {
 	fmt.Println("转账成功!")
 
 	// 获取当前余额
-	balance, err := w.GetBalance(context.Background())
+	balance, err := w.GetBalance(context.Background(), block)
 	if err != nil {
 		log.Fatal(err)
 	}
