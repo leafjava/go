@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"crypto/ecdsa"
 	"fmt"
 	"math/big"
 	"sync"
@@ -97,7 +98,13 @@ func BatchTransfer(
 			mu.Unlock()
 		}(i, signedTx)
 	}
-	
+
 	wg.Wait()
 	return results, nil
+}
+
+func main() {
+	fmt.Println("BatchTransfer — 并发批量转账示例")
+	fmt.Println("核心功能：构建多笔 nonce 递增的交易，并发广播到链上")
+	fmt.Println("使用前需填入实际的 RPC URL、私钥和转账列表")
 }
