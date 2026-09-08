@@ -12,6 +12,9 @@
 
 ### Q1：请简单做下自我介绍，还有最近用的项目和技术栈
 
+**🗣️ 口述话术**：
+> "面试官你好，我叫 leaf，广东财经大学毕业后有 7 年全栈开发经验。最近在做中旅集团后台管理系统，前端用 React、后端用 Go，最近也在尝试把 AI Agent 工作流嵌进合同照片自动录入这种业务场景。"
+
 **面试官原话**：
 > 先简单做一下自我介绍，还有最近用的项目和技术栈吧。
 
@@ -22,11 +25,19 @@
 - 后端：Go
 - 做过 Agent 工作流（如合同照片自动录入信息到后台）
 
+**话术关键点**：
+- 第一句话定调：让人知道工作年限和技术栈
+- 项目要具体（中旅集团）+ 角色清晰
+- 主动提 AI Agent 是加分项
+
 ---
 
 ## 二、AI & Agent 相关（核心考察）
 
 ### Q2：AI 这块做了多少开发经验？多少个项目？
+
+**🗣️ 口述话术**：
+> "AI 这块我大概有 1 年多的项目经验，做过多 Agent 协作框架、向量数据库接入、记忆优化这些。最近一个是在中旅那边做的合同照片自动录入——上传照片后自动抽取关键字段填到后台。海南航空那会儿就开始碰这块了。"
 
 **面试官原话**：
 > 目前的话是做了多少 AI 的开发经验？多少个项目啊？
@@ -35,9 +46,17 @@
 - 多 agent 协作、向量数据库、记忆优化等
 - 海南航空项目已经开始做这块
 
+**话术关键点**：
+- 不夸大也不缩水（1~2 年是合理区间）
+- 给出代表性项目名称
+- 把 AI 能力和业务场景挂钩
+
 ---
 
 ### Q3：多 Agent 协作的场景怎么设计？通信和协调怎么做？
+
+**🗣️ 口述话术**：
+> "我设计过多 Agent 协作框架，核心是三层——编排层决定调用顺序和触发条件，通信层用消息总线（Kafka 或 Redis Streams）解耦，执行层是各个业务 Agent。协调上我会加三道防线：状态机+超时熔断防死循环，优先级+置信度投票解矛盾，全局记忆同步节点避免断层。"
 
 **面试官原话**：
 > 那问你几个简单问题吧。那多 aj 的协作的场景的话，你会怎么设计？然后 aj 之间的通信和协调你会怎么做？
@@ -46,8 +65,7 @@
 - 中央消息总线（消息发布 / 事件订阅）
 - 解耦，新增/替换 Agent 干净
 
-**参考标准答案**（建议补充）：
-
+**核心原理**：
 ```
 多 Agent 架构三层设计：
 1. 编排层（Orchestrator）——决定 Agent 调用顺序和触发条件
@@ -65,9 +83,17 @@
 - 全局记忆同步节点（避免记忆断层）
 ```
 
+**话术关键点**：
+- 三层架构体现整体设计能力
+- 强调消息总线解耦——可插拔
+- 协调机制点出三个关键：死循环、矛盾、断层
+
 ---
 
 ### Q4：Agent 之间的消息键模式怎么设计？
+
+**🗣️ 口述话术**：
+> "消息体我会包含六个关键字段——msg_id 用于去重和幂等，trace_id 串整条链路日志，session_id 做会话隔离，parent_msg_id 支持多轮分支，timestamp 排序和过期，confidence 用于下游仲裁。整体原则是：每条消息都能追溯、能重放、能去重。"
 
 **面试官原话**：
 > 键模式怎么设计吗？
@@ -75,8 +101,7 @@
 **我的回答要点**：
 - 加组件 + 时间戳
 
-**参考标准答案**（建议补充）：
-
+**核心原理**：
 ```json
 {
   "msg_id": "uuid-v4",                  // 消息唯一标识
@@ -92,16 +117,38 @@
 }
 ```
 
-**设计原则**：
-- **msg_id**：去重 + 幂等性
-- **trace_id**：全链路日志串联
-- **session_id**：会话隔离
-- **timestamp**：消息过期和顺序判断
-- **parent_msg_id**：支持多轮对话和分支
+**实战示例**：
+```python
+# 消息生成工具
+import uuid
+import time
+
+def build_msg(agent_id, target_agent, msg_type, payload,
+              session_id, parent_msg_id=None, trace_id=None, confidence=1.0):
+    return {
+        "msg_id": str(uuid.uuid4()),
+        "trace_id": trace_id or str(uuid.uuid4()),
+        "parent_msg_id": parent_msg_id,
+        "session_id": session_id,
+        "agent_id": agent_id,
+        "target_agent": target_agent,
+        "msg_type": msg_type,
+        "timestamp": int(time.time() * 1000),
+        "payload": payload,
+        "confidence": confidence,
+    }
+```
+
+**话术关键点**：
+- msg_id 去重 + trace_id 串日志是工业级标配
+- confidence 字段是仲裁机制的输入
 
 ---
 
 ### Q5：多 Agent 死循环和矛盾决策怎么处理？
+
+**🗣️ 口述话术**：
+> "死循环靠三层防护：状态机记录每个 Agent 的调用次数加最大重试限制、Context 超时熔断超过就 fallback。矛盾决策靠仲裁：先按置信度阈值过滤（<0.6 直接丢弃），再按 priority × weight × confidence 加权投票。置信度低于阈值的就直接弃用，宁缺毋滥。"
 
 **面试官原话**：
 > 那你这里面多维度的出现了出现了死循环和相互矛盾的决策，你会怎么处理？
@@ -112,10 +159,21 @@
 - 置信度阈值（< 0.6 不采纳）
 - 仲裁机制（按优先级 + 权重 + 置信度投票）
 
-**参考标准答案**（建议补充）：
+**核心原理**：
+```
+防死循环（Circulation）：
+1. 状态机：每个 Agent 维护调用计数器，超过 max_retries 抛错
+2. 超时熔断：单次执行超过 timeout 触发 fallback
+3. 全局黑名单：连续失败 N 次进入冷却期 30s
 
+防矛盾（Conflict）：
+1. 置信度阈值：confidence < 0.6 的结果直接丢弃
+2. 加权投票：score = priority × weight × confidence
+3. 取最高分结果作为最终决策
+```
+
+**实战示例**：
 ```python
-# 三层防护机制
 class AgentCoordinator:
     def __init__(self):
         self.max_retries = 3              # 最大重试次数
@@ -126,15 +184,13 @@ class AgentCoordinator:
     # 1. 防死循环：状态机 + 超时熔断
     def invoke_agent(self, agent, input_data, context):
         agent_id = agent.name
-        # 状态机：检测循环
         if self.state_machine.get(agent_id, 0) >= self.max_retries:
             raise MaxRetriesExceeded(f"{agent_id} 超过最大重试次数")
         self.state_machine[agent_id] = self.state_machine.get(agent_id, 0) + 1
 
-        # 超时熔断
         try:
             result = agent.run(input_data, context, timeout=self.timeout)
-            self.state_machine[agent_id] = 0  # 成功后重置
+            self.state_machine[agent_id] = 0
             return result
         except TimeoutError:
             return self.fallback(agent, input_data)
@@ -145,7 +201,6 @@ class AgentCoordinator:
 
     # 3. 仲裁投票：优先级 + 权重 + 置信度
     def arbitrate(self, results):
-        # 加权投票：priority × weight × confidence
         scores = {}
         for r in results:
             score = r.priority * r.weight * r.confidence
@@ -153,9 +208,16 @@ class AgentCoordinator:
         return max(scores, key=scores.get)
 ```
 
+**话术关键点**：
+- "宁缺毋滥"是面试亮点——低置信度直接弃
+- 加权投票公式要说得出来
+
 ---
 
 ### Q6：Agent 的记忆管理怎么做？怎么解决记忆断层？
+
+**🗣️ 口述话术**：
+> "记忆我做分层——全局长期记忆存核心意图、决策结果、用户画像，所有 Agent 能读但只有专用 Agent 能写；Agent 局部短期记忆存当前任务上下文，任务结束自动清理。防断层的关键是设记忆同步节点，比如意图分析 Agent 确认用户意图后立刻写入全局记忆，下游 Agent 启动前先读全局记忆，避免重复梳理。"
 
 **面试官原话**：
 > 那你这里，Agent 的 Agent 的记忆管理，你会怎么做？就比如说你这里已经采用了多 Agent 然后这里出现了机遇，每个 Agent 之间出现了记忆层的断层或者是混乱。然后你这里要怎么去梳理这个，然后保留哪些历史记录该保留哪些历史记录该清理？
@@ -168,8 +230,7 @@ class AgentCoordinator:
 - 记忆同步节点（意图分析 Agent 确认后写入全局记忆）
 - 历史记录策略保留
 
-**参考标准答案**（建议补充）：
-
+**核心原理**：
 ```
 记忆分层架构：
 ┌─────────────────────────────────────┐
@@ -197,11 +258,18 @@ class AgentCoordinator:
    - 压缩：超长对话做摘要存储
 ```
 
+**话术关键点**：
+- 全局 vs 局部，权限要区分清楚
+- 同步节点是核心设计——面试要主动说
+
 ---
 
 ## 三、RAG 检索增强（核心考察）
 
 ### Q7：RAG 的完整流程是什么？为什么要分块？
+
+**🗣️ 口述话术**：
+> "RAG 我会做两条链路。离线建库：文档解析→分块→向量化入向量库；在线检索：用户 Query 向量化→混合检索（向量+BM25）→Rerank 重排→Top-K 拼 Prompt。分块是必须的——不切分整篇塞进去会超 LLM 上下文，而且噪音太多命中率低，精确小块更容易命中。"
 
 **面试官原话**：
 > 那在记忆里面，我们一般就都都会用到那个检索 rag 的那一块的，rag 的检索还有分块，聊一下那个 rag 的完整流程和为什么要进行这个分块。
@@ -212,13 +280,12 @@ class AgentCoordinator:
 - 在线：用户输入向量化 → 混合检索 → 关键词召回
 - 分块原因：超出模型上下文 + 噪音太多 + 命中率更高
 
-**参考标准答案**（建议补充）：
-
+**核心原理**：
 ```
 RAG 完整流程：
 
 离线建库链路（一次性或增量）：
-文档输入 → 解析（PDF/Word/MD） → 清洗（去噪/格式化） 
+文档输入 → 解析（PDF/Word/MD） → 清洗（去噪/格式化）
         → 分块（Chunking） → 向量化（Embedding） → 存入向量数据库
 
 在线检索链路（每次请求）：
@@ -233,9 +300,16 @@ RAG 完整流程：
 5. 检索精度 —— 小的语义单元匹配更准确
 ```
 
+**话术关键点**：
+- 两条链路分开讲——这是工业级 RAG 的标志
+- 分块的 5 个原因按重要性排序
+
 ---
 
 ### Q8：分块大小和重叠怎么定？检索不准一般是哪个环节的问题？
+
+**🗣️ 口述话术**：
+> "中文场景我常用 256~512 字（400~800 token），重叠 10%~20%。合同类压到 200~300 字，文章类放宽到 500~800。检索不准我会按四步排查：分块是否切断语义边界、Embedding 模型对中文效果、是否需要混合检索补专名、是否缺 Rerank 重排。四个环节出问题各有特征，对症修复。"
 
 **面试官原话**：
 > 那里面块的大小和重叠你会怎么定？然后有时候检索不准确一般是哪个环节出了问题了？
@@ -253,14 +327,13 @@ RAG 完整流程：
 3. 检索策略问题（纯向量检索对专有名词弱）
 4. 缺少重排（直接取 Top-K 可能漏相关）
 
-**参考标准答案**（建议补充）：
-
+**核心原理**：
 ```python
 # 分块策略选择
 chunking_strategies = {
     "fixed_size": {
-        "chunk_size": 500,        # 固定 500 字
-        "overlap": 50,             # 重叠 50 字（10%）
+        "chunk_size": 500,
+        "overlap": 50,             # 10%
         "适用": "结构化文档"
     },
     "semantic": {
@@ -288,12 +361,9 @@ def diagnose_low_retrieval_accuracy():
     return checks
 ```
 
-**常见修复方案**：
-- 换更好的 Embedding 模型（BGE-large-zh、M3E）
-- 加入 BM25 关键词召回（混合检索）
-- 增加 Rerank 重排（BGE-Reranker）
-- Query 改写（让 LLM 重新表述用户问题）
-- 元数据过滤（按时间、文档类型缩小范围）
+**话术关键点**：
+- 中文分块大小有具体数字——不空谈
+- 排查按四个环节对症——体现工程经验
 
 ---
 
@@ -301,14 +371,24 @@ def diagnose_low_retrieval_accuracy():
 
 ### Q9：Go 开发几年经验？
 
+**🗣️ 口述话术**：
+> "毕业就开始用 Go，到现在差不多 7 年了，主要做高并发后端服务和分布式系统。"
+
 **面试官原话**：
 > 狗狼开发的话，现在最近狗狼开发是有是开了有几年的开发经验啊？
 
 **我的回答**：毕业就开始用 Go，差不多 7 年了。
 
+**话术关键点**：
+- 数字准确
+- 提一句应用场景
+
 ---
 
 ### Q10：GMP 调度模型？G、M、P 分别是什么？
+
+**🗣️ 口述话术**：
+> "GMP 是 Go 的协程调度核心——G 是 Goroutine 本身（初始栈 2KB），M 是 OS 内核线程（真正干活的），P 是逻辑处理器（默认等于 CPU 核数）。M 必须绑定 P 才有执行权，从 P 的本地队列取 G 执行。执行顺序是：M 绑 P → 从 P 的本地队列取 G → 本地空了从全局队列或偷其他 P 的——这就是 Work Stealing 机制。"
 
 **面试官原话**：
 > 那聊一下 Golang 的一些基础的吧，那个 GMP 的调度模型，这里 G 是指什么？M 是指什么？P 是指什么？然后它们的执行顺序。
@@ -319,8 +399,7 @@ def diagnose_low_retrieval_accuracy():
 - P：Processor（逻辑处理器）
 - M 必须绑定 P 才能执行 G
 
-**参考标准答案**（建议补充）：
-
+**核心原理**：
 ```
 GMP 调度模型（Go 1.5+ 引入）：
 
@@ -350,6 +429,7 @@ P（Processor）：
   - GMP 把锁分散到每个 P 的本地队列，减少竞争
 ```
 
+**实战示例**：
 ```go
 // Goroutine 创建示例
 go func() {
@@ -358,11 +438,46 @@ go func() {
 
 // 设置 P 数量（默认 = CPU 核数）
 runtime.GOMAXPROCS(8)
+
+// 并发查询示例（信号量限流）
+func queryBalances(addresses []string) map[string]float64 {
+    results := make(chan struct {
+        Address string
+        Balance float64
+    }, len(addresses))
+    sem := make(chan struct{}, 10) // 最多 10 个并发
+
+    for _, addr := range addresses {
+        go func(address string) {
+            sem <- struct{}{}
+            defer func() { <-sem }()
+            balance := queryTokenBalance(address)
+            results <- struct {
+                Address string
+                Balance float64
+            }{address, balance}
+        }(addr)
+    }
+
+    resultMap := make(map[string]float64)
+    for i := 0; i < len(addresses); i++ {
+        r := <-results
+        resultMap[r.Address] = r.Balance
+    }
+    return resultMap
+}
 ```
+
+**话术关键点**：
+- G/M/P 三者关系要一句话讲清——M 绑 P 才能跑 G
+- Work Stealing 是 Go 调度精髓
 
 ---
 
 ### Q11：Go error 处理的三种模式？
+
+**🗣️ 口述话术**：
+> "Go 1.13 之后 error 处理三件套——哨兵错误用 errors.Is 判断、自定义错误类型用 errors.As 提取、fmt.Errorf %w 包装保留错误链。我项目里会定义业务错误变量（ErrNotFound）和带错误码的结构体（BusinessError），这样前端能根据 code 精确提示，后端日志能完整追踪调用链。"
 
 **面试官原话**：
 > 这里 Golang 里面有那个 error，常见我们异常处理的话，Golang 的 error 处理三种模式是是哪三种模式啊？
@@ -374,16 +489,34 @@ runtime.GOMAXPROCS(8)
 
 **追问**：哨兵错误 + 包装错误（errors.Is / errors.As / fmt.Errorf %w）
 
-**参考标准答案**（建议补充）：
+**核心原理**：
+```
+Go error 处理三种模式：
 
+1. 哨兵错误（Sentinel Error）
+   - 预定义的全局 error 变量
+   - 用于 == 比较或 errors.Is 判断
+   - 适用：固定错误类型（未找到、未授权等）
+
+2. 自定义错误类型（Custom Error Type）
+   - 实现 Error() string 方法
+   - 可携带更多上下文（错误码、用户ID、金额等）
+   - 用 errors.As 提取类型信息
+
+3. 错误包装（Error Wrapping）
+   - fmt.Errorf("...%w", err) 包装错误链
+   - errors.Is / errors.As 沿链查找
+   - errors.Unwrap() 拆解错误链
+```
+
+**实战示例**：
 ```go
 import (
     "errors"
     "fmt"
 )
 
-// 模式 1：哨兵错误（Sentinel Error）
-// 预定义的全局 error 变量，用于 == 比较
+// 模式 1：哨兵错误
 var (
     ErrNotFound     = errors.New("资源未找到")
     ErrUnauthorized = errors.New("未授权")
@@ -394,21 +527,19 @@ func GetUser(id int) (*User, error) {
     if id <= 0 {
         return nil, ErrInvalidInput
     }
-    // ...
     return nil, ErrNotFound
 }
 
-// 调用方判断
+// errors.Is 判断
 if errors.Is(err, ErrNotFound) {
     return 404
 }
 
-// 模式 2：自定义错误类型（Custom Error Type）
-// 携带更多上下文信息
+// 模式 2：自定义错误类型
 type BusinessError struct {
     Code    int
     Message string
-    Err     error  // 包装底层错误
+    Err     error
 }
 
 func (e *BusinessError) Error() string {
@@ -419,37 +550,35 @@ func (e *BusinessError) Unwrap() error {
     return e.Err
 }
 
-// errors.As 提取自定义错误
+// errors.As 提取
 var be *BusinessError
 if errors.As(err, &be) {
     return be.Code
 }
 
-// 模式 3：错误包装（Error Wrapping）
-// 用 fmt.Errorf %w 包装错误链
+// 模式 3：错误包装
 func GetUserProfile(id int) (*Profile, error) {
     user, err := GetUser(id)
     if err != nil {
         return nil, fmt.Errorf("获取用户档案失败 (id=%d): %w", id, err)
     }
-    // ...
-}
-
-// errors.Unwrap 拆解错误链
-for err != nil {
-    fmt.Println(err)
-    err = errors.Unwrap(err)
+    return &user.Profile, nil
 }
 ```
 
-**Go 1.13+ 三件套**：`errors.Is` + `errors.As` + `fmt.Errorf("...%w", err)`
+**话术关键点**：
+- Go 1.13+ 三件套：Is / As / %w
+- 业务错误码结构体是工业级标配
 
 ---
 
 ### Q12：Channel 关闭后读和写会发生什么？
 
+**🗣️ 口述话术**：
+> "写已关闭的 channel 直接 panic 而且 recover 也没用，程序直接崩。读已关闭的 channel 不 panic 但会一直返回零值，特别容易踩坑——你以为有数据但其实没有。最佳实践是发送方负责 close，接收方用 `val, ok := <-ch` 的 ok 模式判断。"
+
 **面试官原话**：
-> 在 Golang 里面我们常用到 channel 通道，我们在 channel 通道里面会有，就是关闭的时候，我们会遇见像已关闭的 channel 通道读和写会发生什么情况？
+> 在 Golang 里面我们常用到 channel 通道，我们在 channel 通道里面会��，就是关闭的时候，我们会遇见像已关闭的 channel 通道读和写会发生什么情况？
 
 **我的回答要点**：
 - **写**：向已关闭 channel 写数据 → **panic（不可 recover）**
@@ -457,8 +586,27 @@ for err != nil {
 - 容易踩坑：读会一直返回零值
 - 黄金法则：发送方负责 close
 
-**参考标准答案**（建议补充）：
+**核心原理**：
+```
+Channel 关闭行为：
 
+写（Send）：
+  - 向已关闭 channel 写数据 → panic: send on closed channel
+  - panic 无法拦截（即使 recover 也会让程序进入异常状态）
+  - 唯一安全做法：发送前判断或由发送方 close
+
+读（Receive）：
+  - 从已关闭 channel 读数据 → 不 panic
+  - 返回零值（int → 0，string → ""，struct → 零值）
+  - 不阻塞，立即返回
+  - 但容易误以为有数据 → 必须用 ok 模式
+
+黄金法则：
+  - 发送方负责 close（不要在接收方 close）
+  - 接收方用 `val, ok := <-ch` 判断（ok=false 表示已关闭）
+```
+
+**实战示例**：
 ```go
 // 写：panic
 ch := make(chan int)
@@ -470,21 +618,14 @@ ch := make(chan int)
 close(ch)
 
 val := <-ch        // val = 0（不报错！）
-val, ok := <-ch     // val = 0, ok = false（推荐）
-
-// 安全模式：用 defer recover 兜底（但不是最佳实践）
-defer func() {
-    if r := recover(); r != nil {
-        fmt.Println("recovered:", r)
-    }
-}()
+val, ok := <-ch    // val = 0, ok = false（推荐）
 
 // 最佳实践：发送方负责 close
 func producer(ch chan<- int) {
     for i := 0; i < 5; i++ {
         ch <- i
     }
-    close(ch)  // 只有发送方 close
+    close(ch)
 }
 
 func consumer(ch <-chan int) {
@@ -494,9 +635,16 @@ func consumer(ch <-chan int) {
 }
 ```
 
+**话术关键点**：
+- 写 panic 不可 recover 是关键考点
+- 读零值陷阱最容易踩
+
 ---
 
 ### Q13：多发送方一个接收方，怎么安全关闭 channel？
+
+**🗣️ 口述话术**：
+> "多发送方一定不能在发送方内部 close——会 panic。我用三种方案：sync.WaitGroup 等所有发送结束 + 专门 goroutine 关闭；sync.Once 保证只 close 一次；done channel 通知发送方退出。最稳的是 WaitGroup + 专门协调者关闭。"
 
 **面试官原话**：
 > 那我如果有多个发送方，一个接收方，我这里怎么安全的关闭这个 channel 通道呢？
@@ -505,15 +653,31 @@ func consumer(ch <-chan int) {
 - 用 `sync.WaitGroup` 等所有发送协程结束
 - 由专门的 goroutine 统一关闭 channel
 
-**参考标准答案**（建议补充）：
+**核心原理**：
+```
+多发送方关闭原则：
 
+绝对禁止：
+  - 任何发送方内部 close —— 会 panic
+
+必须：
+  - 由独立的协调者（专门 goroutine）关闭
+  - 关闭前等所有发送完成（WaitGroup）
+  - 用 sync.Once 保证只 close 一次
+
+三种方案：
+  1. WaitGroup + 协调 goroutine 关闭
+  2. sync.Once 防止重复关闭
+  3. done channel 通知发送方主动退出
+```
+
+**实战示例**：
 ```go
-// 方案1：sync.WaitGroup + 专门 goroutine 关闭
+// 方案1：WaitGroup + 专门 goroutine 关闭
 func multiSender() {
     ch := make(chan int)
     var wg sync.WaitGroup
 
-    // 3 个发送方
     for i := 0; i < 3; i++ {
         wg.Add(1)
         go func(id int) {
@@ -524,19 +688,17 @@ func multiSender() {
         }(i)
     }
 
-    // 专门 goroutine 等所有发送完成后关闭
     go func() {
         wg.Wait()
-        close(ch)
+        close(ch)  // 协调者统一关闭
     }()
 
-    // 接收方
     for v := range ch {
         fmt.Println(v)
     }
 }
 
-// 方案2：用 sync.Once 保证只关闭一次
+// 方案2：sync.Once 保证只关闭一次
 func multiSenderWithOnce() {
     ch := make(chan int)
     var once sync.Once
@@ -554,7 +716,7 @@ func multiSenderWithOnce() {
 
     go func() {
         wg.Wait()
-        once.Do(func() { close(ch) })  // 保证只 close 一次
+        once.Do(func() { close(ch) })
     }()
 
     for v := range ch {
@@ -562,7 +724,7 @@ func multiSenderWithOnce() {
     }
 }
 
-// 方案3：用 done channel 通知关闭
+// 方案3：done channel 通知发送方退出
 func multiSenderWithDone() {
     ch := make(chan int)
     done := make(chan struct{})
@@ -580,7 +742,6 @@ func multiSenderWithDone() {
     }
 
     go func() {
-        // 某种条件触发关闭
         time.Sleep(time.Second)
         close(done)
         close(ch)
@@ -592,13 +753,18 @@ func multiSenderWithDone() {
 }
 ```
 
-**核心原则**：多个发送方时，**不能在发送方内部 close**（会触发 panic），必须由独立的协调者关闭。
+**话术关键点**：
+- "绝对不能在发送方内部 close" 是铁律
+- 三种方案按推荐度排序
 
 ---
 
 ## 五、Elasticsearch（搜索核心）
 
 ### Q14：ES 的分片和副本是干什么的？
+
+**🗣️ 口述话术**：
+> "分片是把一个索引的数据拆成多份分布到不同节点，作用是水平扩展存储和并行查询提升性能——分片数创建后不能改。副本是每个分片的拷贝，作用是高可用（主分片挂了副本顶上）和分担读压力（搜索请求可以走副本）。副本提升读但不提升写，写仍要主分片处理。"
 
 **面试官原话**：
 > ES 里面我们的分片和副本是干什么的？
@@ -607,8 +773,7 @@ func multiSenderWithDone() {
 - 分片：水平扩展存储，提升性能
 - 副本：提升数据冗余（高可用）+ 分担读压力
 
-**参考标准答案**（建议补充）：
-
+**核心原理**：
 ```
 ES 分片（Shard）：
 - 把一个索引（Index）的数据拆成多份，分布到不同节点
@@ -628,19 +793,33 @@ ES 副本（Replica）：
 - 副本提升读性能但不提升写性能（写仍要主分片处理）
 ```
 
+**实战示例**：
 ```json
 PUT /my_index
 {
   "settings": {
-    "number_of_shards": 5,      // 主分片数（创建后不可改）
-    "number_of_replicas": 1     // 副本数（可动态调整）
+    "number_of_shards": 5,
+    "number_of_replicas": 1
   }
 }
+
+// 动态调整副本数（分片数不能改）
+PUT /my_index/_settings
+{
+  "number_of_replicas": 2
+}
 ```
+
+**话术关键点**：
+- 分片不可改、副本可改——常考点
+- 副本只提升读不提升写
 
 ---
 
 ### Q15：ES 深分页为什么慢？怎么处理？
+
+**🗣️ 口述话术**：
+> "深分页慢是因为 from+size 机制——每个分片都要查 from+size 条再全局排序，丢前 from 条。from=10000 时每个分片查 10010 条，性能爆炸。优化方案是用 search_after + PIT 快照——基于上一页最后一条的 sort 值查下一页，不需要 from，性能稳定。Scroll 适合导出但不适合用户翻页。"
 
 **面试官原话**：
 > 那那我们在这里的时候，通常有深深那种深分页的查询，比如说我们一万页啊，这里上下页一万页的上下页在 ES 这里为什么会慢？然后你会怎么处理呢？
@@ -649,8 +828,7 @@ PUT /my_index
 - point in time（PIT）机制
 - search_after 配合游标
 
-**参考标准答案**（建议补充）：
-
+**核心原理**：
 ```
 ES 深分页（from + size）为什么慢：
 
@@ -666,7 +844,6 @@ from + size 机制：
 - 深度翻页 = 全量扫描 + 全局排序
 
 优化方案：
-
 1. search_after（推荐）：
    - 基于上一页最后一条的 sort 值查下一页
    - 不需要 from，深翻页性能稳定
@@ -681,10 +858,12 @@ from + size 机制：
    - 适合全量导出，不适合用户翻页
 ```
 
+**实战示例**：
 ```json
-// search_after + PIT 实现深翻页
+// 1. 创建 PIT 快照
 POST /my_index/_pit?keep_alive=2m
 
+// 2. 用 search_after 翻页
 POST /_search
 {
   "pit": {
@@ -694,15 +873,22 @@ POST /_search
   "size": 10,
   "sort": [
     { "timestamp": "asc" },
-    { "_id": "asc" }  // 全局唯一 tiebreaker
+    { "_id": "asc" }
   ],
-  "search_after": [1725753600000, "doc_123"]  // 上一页最后一条
+  "search_after": [1725753600000, "doc_123"]
 }
 ```
+
+**话术关键点**：
+- 深分页慢的根因是"丢前 from 条"
+- PIT + search_after 是工业级标配
 
 ---
 
 ### Q16：什么是倒排索引？为什么 ES 适合全文检索而 MySQL 不适合？
+
+**🗣️ 口述话术**：
+> "倒排索引就是关键词→文档的映射（正常索引是文档→关键词，反过来）。ES 倒排索引由词项字典+FST+倒排列表组成，专为全文检索优化。MySQL 用 B+Tree 适合精确查找，全文检索需要全表扫，而且中文分词支持弱，所以复杂搜索必须用 ES。"
 
 **面试官原话**：
 > 那嗯，ES，ES 有一个倒排索引的逻辑，然后这里什么是倒排索引？为什么 ES 适合全文解锁，而买这个不适合呢？
@@ -712,22 +898,21 @@ POST /_search
 - MySQL 全文检索弱：分词器弱（中文支持差）
 - ES 倒排索引：性能好 + 可分片到多机器并行查询
 
-**参考标准答案**（建议补充）：
-
+**核心原理**：
 ```
 倒排索引（Inverted Index）：
 
 正排索引（MySQL 默认）：
   文档1 → [关键词1, 关键词2, 关键词3]
   文档2 → [关键词1, 关键词4]
-  
+
   查"关键词1在哪些文档" → 全表扫描
 
 倒排索引（ES）：
   关键词1 → [文档1, 文档2, 文档5, 文档8]
   关键词2 → [文档1, 文档3]
   关键词3 → [文档1, 文档4]
-  
+
   查"关键词1在哪些文档" → 直接拿列表
 
 ES 倒排索引结构：
@@ -744,14 +929,18 @@ ES 倒排索引结构：
    MySQL 单机性能瓶颈
 4. 相关性评分：ES 内置 TF-IDF / BM25 算法
    MySQL 全文检索评分简单
-
-MySQL 全文索引（NGRAM）仅作为基础方案，
-复杂搜索（高亮、聚合、模糊、相关性排序）必须用 ES。
 ```
+
+**话术关键点**：
+- 倒排索引"反"在哪里要说清楚
+- ES 三大优势：分词器、索引结构、分布式
 
 ---
 
 ### Q17：text 和 keyword 类型的区别？什么时候用哪个？
+
+**🗣️ 口述话术**：
+> "text 会被分词器拆成多个词项，支持全文检索但不支持聚合排序——适合文章正文、商品描述。keyword 不分词原值存储，支持精确匹配、聚合、排序——适合分类、标签、状态字段。实战中常在 text 字段下嵌套一个 keyword 子字段（如 title.keyword）做精确匹配。"
 
 **面试官原话**：
 > 这里 ES 的索引里面有 Tax 和 keyword 的类型，它这里有什么区别？什么时候用用 Tax 什么时候用 keyword？
@@ -762,8 +951,7 @@ MySQL 全文索引（NGRAM）仅作为基础方案，
 - 需要搜索 → text
 - 需要精确过滤/分组 → keyword
 
-**参考标准答案**（建议补充）：
-
+**核心原理**：
 ```
 text 类型：
 - 会被分词器拆分（如 "iPhone 15 Pro Max" → ["iphone", "15", "pro", "max"]）
@@ -780,33 +968,28 @@ keyword 类型：
 - 适用：商品分类、标签、状态、邮箱、用户名
 ```
 
+**实战示例**：
 ```json
 // 典型映射设计
 {
   "mappings": {
     "properties": {
       "title": {
-        "type": "text",        // 文章标题支持全文检索
+        "type": "text",
         "fields": {
-          "keyword": {          // 同时存 keyword 用于精确匹配
+          "keyword": {
             "type": "keyword",
             "ignore_above": 256
           }
         }
       },
-      "category": {
-        "type": "keyword"      // 分类用于聚合（terms agg）
-      },
-      "tags": {
-        "type": "keyword"      // 标签数组
-      },
+      "category": { "type": "keyword" },
+      "tags": { "type": "keyword" },
       "content": {
         "type": "text",
-        "analyzer": "ik_max_word"  // 中文分词
+        "analyzer": "ik_max_word"
       },
-      "status": {
-        "type": "keyword"      // 状态字段（精确过滤）
-      }
+      "status": { "type": "keyword" }
     }
   }
 }
@@ -814,25 +997,21 @@ keyword 类型：
 // text 检索
 GET /articles/_search
 {
-  "query": {
-    "match": {
-      "title": "iPhone"  // 全文检索
-    }
-  }
+  "query": { "match": { "title": "iPhone" } }
 }
 
 // keyword 聚合
 GET /articles/_search
 {
   "aggs": {
-    "by_category": {
-      "terms": {
-        "field": "category"  // 聚合
-      }
-    }
+    "by_category": { "terms": { "field": "category" } }
   }
 }
 ```
+
+**话术关键点**：
+- text + keyword 双字段是工业级标配
+- ignore_above 限制长字符串
 
 ---
 
@@ -840,16 +1019,26 @@ GET /articles/_search
 
 ### Q18：K3S 和 K3SD 有做过吗？
 
+**🗣️ 口述话术**：
+> "K3S 我了解过概念——它是轻量级 Kubernetes，适合 IoT 和边缘场景，单二进制部署。但实际生产项目里主要用的是 K8s 原生集群或者 Docker Compose，K3SD 这块确实没做过，如果入职有需要我可以快速上手。"
+
 **面试官原话**：
 > K3S 和 K3SD 有做过吗？你们这边。
 
 **我的回答**：实际主要是 React 和全栈开发，这块接触不深，承认不熟悉。
+
+**话术关键点**：
+- 诚实说不熟悉比硬编好
+- 但要表达学习意愿和迁移能力
 
 ---
 
 ## 七、MySQL 主从复制（实战偏弱）
 
 ### Q19：MySQL 主从复制原理？怎么保证主从数据一致？
+
+**🗣️ 口述话术**：
+> "MySQL 主从复制核心是 binlog——主库写入记录到 binlog，从库 I/O 线程拉 binlog 写入 relay log，SQL 线程回放保持一致。默认异步复制性能最好但可能丢数据，生产建议用半同步复制——至少一个从库确认收到才返回成功。"
 
 **面试官原话**：
 > mysql 这里我们通常遇见一种情况，就是 mysql 这里平有瓶颈嘛，它的存储那些，我们做主从复制这一块。mysql 的主从复制的原理是什么？怎么保证这个主从数据库
@@ -860,15 +1049,14 @@ GET /articles/_search
 - 从库 SQL 线程回放 relay log 保持一致
 - 核心：基于 binlog
 
-**参考标准答案**（建议补充）：
-
+**核心原理**：
 ```
 MySQL 主从复制原理：
 
 1. 主库（Master）：
    - 写入操作记录到 binlog（Binary Log）
    - binlog 格式：STATEMENT / ROW / MIXED
-   - 默认 Mysql 5.7+ 推荐 ROW 格式
+   - 默认 MySQL 5.7+ 推荐 ROW 格式
 
 2. 从库（Slave）—— 三个线程：
    - I/O Thread：连接主库，请求 binlog 变更
@@ -876,7 +1064,7 @@ MySQL 主从复制原理：
    - SQL Thread：读取 relay log 并回放
 
 3. 复制流程：
-   主库写入 → binlog → 从库 I/O Thread 拉取 → relay log 
+   主库写入 → binlog → 从库 I/O Thread 拉取 → relay log
    → 从库 SQL Thread 回放 → 从库数据更新
 
 复制模式：
@@ -885,6 +1073,7 @@ MySQL 主从复制原理：
 - 全同步复制：所有从库都执行完才返回（几乎不用）
 ```
 
+**实战示例**：
 ```sql
 -- 主库配置
 [mysqld]
@@ -915,9 +1104,16 @@ START SLAVE;
 SHOW SLAVE STATUS\G
 ```
 
+**话术关键点**：
+- binlog 是核心——所有方案都围绕它
+- 异步 vs 半同步 vs 全同步是加分点
+
 ---
 
 ### Q20：主从切换时怎么保证数据不丢失？
+
+**🗣️ 口述话术**：
+> "切换时保证数据不丢的核心是半同步复制+GTID。半同步保证至少一份 binlog 落到从库，GTID 让从库自动定位断点不需要手动指定 binlog 位点。切换流程：停止主库写入→等从库追平（Seconds_Behind_Master=0）→提升从库为主→应用层切连接。生产用 MHA 或 Orchestrator 做自动切换。"
 
 **面试官原话**：
 > 那那那么这个主从切换，我因为主，可能主库压力大了，或者是主库宕机了，我主从进行主从切换的时候，我怎么保证数据不丢失？
@@ -927,8 +1123,7 @@ SHOW SLAVE STATUS\G
 - 配合定位断点（GTID）
 - 监控延迟
 
-**参考标准答案**（建议补充）：
-
+**核心原理**：
 ```
 保证数据不丢失的方案：
 
@@ -949,7 +1144,7 @@ SHOW SLAVE STATUS\G
 4. 切换流程：
    ① 停止主库写入
    ② 等待从库追平（Seconds_Behind_Master = 0）
-   ③ 提升从库为主（RESET MASTER; 或基于 GTID）
+   ③ 提升从库为主（RESET MASTER 或基于 GTID）
    ④ 应用层切换连接
 
 5. MHA / Orchestrator：
@@ -957,6 +1152,7 @@ SHOW SLAVE STATUS\G
    - 业界成熟方案
 ```
 
+**实战示例**：
 ```sql
 -- 启用半同步复制
 -- 主库
@@ -970,11 +1166,18 @@ SET GLOBAL rpl_semi_sync_slave_enabled = 1;
 STOP SLAVE; START SLAVE;
 ```
 
+**话术关键点**：
+- 半同步 + GTID 是标配组合
+- MHA / Orchestrator 是高可用加分项
+
 ---
 
 ## 八、Redis（高频考点）
 
 ### Q21：Redis 淘汰策略有哪些？
+
+**🗣️ 口述话术**：
+> "Redis 8 种淘汰策略分三类——针对过期键的有 volatile-lru/lfu/ttl/random，针对所有键的有 allkeys-lru/lfu/random，以及默认的 noeviction（写满直接报错）。生产缓存场景一般用 allkeys-lru 允许少量丢失，强一致场景用 noeviction 让应用层处理。"
 
 **面试官原话**：
 > 应用这方面，那那问几个 redis 常见的问题吧。我们现在，比如说你现在 redis 有大大内存，或者是那个会导致 redis 的内存满了，redis 的淘汰策略有哪几个策略？
@@ -983,8 +1186,7 @@ STOP SLAVE; START SLAVE;
 - 8 种淘汰策略
 - 默认 noeviction（直接报错）
 
-**参考标准答案**（建议补充）：
-
+**核心原理**：
 ```
 Redis 8 种淘汰策略（maxmemory-policy）：
 
@@ -996,7 +1198,7 @@ Redis 8 种淘汰策略（maxmemory-policy）：
 
 分类2：针对所有键
 5. allkeys-lru        —— 所有键中淘汰最近最少使用（最常用）
-6. allkeys-lfu        —— 所有键中淘汰最不经常使用
+6. allkeys-lfu        —— 所有键��淘汰最不经常使用
 7. allkeys-random     —— 所有键中随机淘汰
 
 分类3：不淘汰
@@ -1008,15 +1210,26 @@ Redis 8 种淘汰策略（maxmemory-policy）：
 - 热点数据明显：allkeys-lfu（比 LRU 更精准）
 ```
 
+**实战示例**：
 ```bash
 # 配置
 CONFIG SET maxmemory 2gb
 CONFIG SET maxmemory-policy allkeys-lru
+
+# 持久化配置
+CONFIG SET maxmemory-samples 5  # 采样数（越大越精准）
 ```
+
+**话术关键点**：
+- 三分类清楚：过期键 / 所有键 / 不淘汰
+- LRU vs LFU 区别：使用频率 vs 最近使用
 
 ---
 
 ### Q22：Redis 大 Key 和热 Key 怎么发现和处理？
+
+**🗣️ 口述话术**：
+> "大 Key 用 redis-cli --bigkeys 扫描，热 Key 用 --hotkeys 或 INFO commandstats。处理大 Key 用 UNLINK 非阻塞删除（替代 DEL），热 Key 三板斧——拆 key（多 key 分散）、本地缓存（应用层 LRU）、读写分离（一主多从读副本）。"
 
 **面试官原话**：
 > 下一个下一个就是我们大 k 热 k 你会怎么发现 redis 里面的大 k 和热 k 然后并进行处理。
@@ -1036,29 +1249,45 @@ CONFIG SET maxmemory-policy allkeys-lru
 - 本地缓存
 - 读写分离
 
-**参考标准答案**（建议补充）：
+**核心原理**：
+```
+大 Key 问题：
+- 单 key 过大（>10MB）会阻塞 Redis 单线程
+- DEL 大 key 同步删除会导致数十毫秒阻塞
+- 大 key 在集群模式下无法均匀分布
 
+热 Key 问题：
+- 单一 key 流量占 QPS 50%+，成为单点瓶颈
+- 主从架构下从库也被打满
+- 缓存击穿风险
+
+大 Key 发现：
+  redis-cli --bigkeys           # 扫描整个实例（生产慎用）
+  redis-cli --memkeys           # 按内存排序（Redis 7.0+）
+
+热 Key 发现：
+  redis-cli --hotkeys           # Redis 7.0+
+  redis-cli INFO commandstats   # 看命令统计
+  monitor 命令采样               # 生产慎用，会降低 QPS 30%
+```
+
+**实战示例**：
 ```bash
 # 大 Key 发现
-redis-cli --bigkeys                    # 扫描整个实例
-redis-cli --memkeys                    # 按内存排序（Redis 7.0+）
+redis-cli --bigkeys
 redis-cli -h host -p port --bigkeys -i 0.1  # 0.1秒间隔避免阻塞
 
 # 自定义扫描大 Key
 redis-cli --scan --pattern '*' | xargs -L 1 -I {} sh -c 'redis-cli OBJECT IDLETIME {} && redis-cli STRLEN {}'
 
 # 大 Key 处理
-UNLINK bigkey                          # 非阻塞删除（Redis 4.0+）
-DEL bigkey                             # 阻塞删除（生产慎用）
-
-# 热 Key 发现
-redis-cli --hotkeys                    # Redis 7.0+ 支持
-redis-cli INFO commandstats            # 看命令统计
-monitor 命令采样（生产慎用，会降低 QPS 30%）
+UNLINK bigkey       # 非阻塞删除（Redis 4.0+）
+DEL bigkey          # 阻塞删除（生产慎用）
 ```
 
 ```go
-// 热 Key 处理三板斧
+// 热 Key 处理三板斧（Go 代码示例）
+
 // 1. Key 拆分
 // 原：user:profile:123 → 改为多 key 分散
 user:profile:123:basic → 基础信息
@@ -1066,16 +1295,14 @@ user:profile:123:ext   → 扩展信息
 
 // 2. 本地缓存（应用层）
 type HotKeyCache struct {
-    localCache *sync.Map  // 或 LRU
+    localCache *sync.Map
     redis      *redis.Client
 }
 
 func (c *HotKeyCache) Get(key string) (string, error) {
-    // 先查本地
     if v, ok := c.localCache.Load(key); ok {
         return v.(string), nil
     }
-    // 再查 Redis
     v, err := c.redis.Get(ctx, key).Result()
     if err == nil {
         c.localCache.Store(key, v)
@@ -1086,9 +1313,16 @@ func (c *HotKeyCache) Get(key string) (string, error) {
 // 3. 读写分离（一主多从）+ 读副本分担
 ```
 
+**话术关键点**：
+- 大 Key / 热 Key 用具体命令名（UNLINK、--bigkeys）
+- 三板斧——拆、缓、读
+
 ---
 
 ### Q23：为什么线上禁止用 `KEYS *`？
+
+**🗣️ 口述话术**：
+> "KEYS * 是 O(N) 全库扫描，会让 Redis 单线程阻塞，期间不响应其他请求，还会让主从同步阻塞。正确做法是用 SCAN 增量迭代——每次返回少量不阻塞，配合 MATCH 模式匹配和 COUNT 控制批次大小。"
 
 **面试官原话**：
 > 然后我我们为什么线上会要禁止用 k 的星呢？k 的星有什么不好的地方？
@@ -1099,8 +1333,22 @@ func (c *HotKeyCache) Get(key string) (string, error) {
 - 主从同步阻塞
 - 阻塞 + 性能风险
 
-**参考标准答案**（建议补充）：
+**核心原理**：
+```
+KEYS * 的危害：
+1. CPU 飙升 —— 单线程遍历所有 key
+2. 阻塞所有请求 —— KEYS 执行期间 Redis 不响应其他命令
+3. 主从同步阻塞 —— 主库 KEYS 会让从库也跟着阻塞
+4. 内存暴涨 —— 一次性返回大量数据撑爆客户端内存
 
+SCAN 优势：
+- 增量迭代，每次返回少量
+- 不阻塞 Redis
+- 可配合 MATCH 模式匹配
+- COUNT 控制每次返回数量
+```
+
+**实战示例**：
 ```bash
 # 错误用法：全量扫描（生产禁用）
 KEYS *                 # O(N) 全库扫描，阻塞 Redis
@@ -1116,25 +1364,32 @@ SCAN 0 MATCH user:* COUNT 1000  # 非阻塞，分批返回游标
 #    3) "user:100"
 ```
 
-```
-KEYS * 的危害：
-1. CPU 飙升 —— 单线程遍历所有 key
-2. 阻塞所有请求 —— KEYS 执行期间 Redis 不响应其他命令
-3. 主从同步阻塞 —— 主库 KEYS 会让从库也跟着阻塞
-4. 内存暴涨 —— 一次性返回大量数据撑爆客户端内存
+```python
+# Python 客户端遍历所有 key
+from redis import Redis
 
-SCAN 优势：
-- 增量迭代，每次返回少量
-- 不阻塞 Redis
-- 可配合 MATCH 模式匹配
-- COUNT 控制每次返回数量
+r = Redis(host='localhost', port=6379)
+cursor = 0
+while True:
+    cursor, keys = r.scan(cursor=cursor, match='user:*', count=1000)
+    for key in keys:
+        process(key)
+    if cursor == 0:
+        break
 ```
+
+**话术关键点**：
+- KEYS * 的 4 个危害都要说
+- SCAN 的 4 个优势对应
 
 ---
 
 ## 九、外部三（SEO 考察）
 
 ### Q24：SEO 优化 sitemap 和 robots 了解过吗？
+
+**🗣️ 口述话术**：
+> "sitemap.xml 列网站所有重要页面，提交给 Google Search Console 帮助搜索引擎发现和索引；robots.txt 放在根目录，告诉爬虫哪些路径允许或禁止抓取。meta 标签这块，title 控制在 60 字符内含核心关键词、description 控制在 155 字符、canonical 防重复内容、JSON-LD 结构化数据提升搜索展现。海南航空项目做过服务端渲染适配 Googlebot/Bingbot。"
 
 **面试官原话**：
 > 外部三外部三一般的话，我们作为开发的话，虽然公司有配 seo 专员，但是我们做做项目的可能自己要学习和领悟这些 seo 的相关知识。setmap 和 nmap 这一块主要做什么？
@@ -1147,8 +1402,7 @@ SCAN 优势：
 - 区分爬虫、提交 sitemap、JSON-LD 结构化数据
 - 配置 robots、统一 canonical
 
-**参考标准答案**（建议补充）：
-
+**核心原理**：
 ```
 robots.txt（爬虫规则）：
 - 放在网站根目录 /robots.txt
@@ -1175,6 +1429,7 @@ robots meta 标签（单页面）：
 - noindex / nofollow / noarchive
 ```
 
+**实战示例**：
 ```html
 <!-- robots.txt 示例 -->
 User-agent: *
@@ -1220,20 +1475,20 @@ Disallow: /
   <meta name="description" content="页面摘要，包含核心关键词，吸引用户点击">
   <meta name="robots" content="index, follow">
   <link rel="canonical" href="https://example.com/page">
-  
+
   <!-- Open Graph -->
   <meta property="og:title" content="分享标题">
   <meta property="og:description" content="分享描述">
   <meta property="og:image" content="https://example.com/og.jpg">
   <meta property="og:url" content="https://example.com/page">
   <meta property="og:type" content="website">
-  
+
   <!-- Twitter Card -->
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="标题">
   <meta name="twitter:description" content="描述">
   <meta name="twitter:image" content="https://example.com/twitter.jpg">
-  
+
   <!-- 结构化数据（JSON-LD） -->
   <script type="application/ld+json">
   {
@@ -1246,14 +1501,18 @@ Disallow: /
 </head>
 ```
 
+**话术关键点**：
+- robots.txt / sitemap.xml / meta 三件套要齐
+- canonical 防止重复内容是加分点
+
 ---
 
 ## 十、反问环节 & 软性问题
 
 ### Q25：贵公司主要做什么业务？技术栈？
 
-**我的提问**：
-> 我想问一下，如果有幸进入贵公司的话，主要会做哪方面的一些任务和需求呢？
+**🗣️ 口述话术**（我的提问）：
+> "如果有幸进入贵公司，主要会做哪方面任务和需求？团队规模和技术栈是怎样的？我看您提到考虑 K3S/K3SD 部署，这块是新迁移过去的还是一直用的？"
 
 **面试官回答**：
 - Golang 开发为主
@@ -1268,11 +1527,8 @@ Disallow: /
 
 ### Q26：工作时间是怎样的？
 
-**我的回答**：
-- 早上国内时间 10:00 ~ 22:00
-- 中午休息 2 小时、晚上休息 1 小时
-- 周一至周六
-- 假期走国内假期
+**🗣️ 口述话术**（我的回答）：
+> "工作时间 10:00 ~ 22:00（国内时间），中午 2 小时休息、晚上 1 小时休息，周一到周六，假期走国内假期。"
 
 **面试官补充**：
 > 工作时间可能长一点，人事有跟你说吗？
@@ -1281,8 +1537,8 @@ Disallow: /
 
 ### Q27：薪资结算方式？
 
-**面试官原话**：
-> 薪资方面是走 USDT 结算，你这边要求薪资是多少？
+**🗣️ 口述话术**（面试官原话）：
+> "薪资方面是走 USDT 结算，你这边要求薪资是多少？"
 
 **我的回答**：
 - 第一次：20~30k（跨度太大，被要求具体）
@@ -1292,8 +1548,8 @@ Disallow: /
 
 ### Q28：签证情况？
 
-**面试官原话**：
-> 我想问一下，因为听候选人是在泰国，想知道你泰国现在目前是刷签还是什么签证吗？
+**🗣️ 口述话术**（面试官原话）：
+> "我想问一下，因为听候选人是在泰国，想知道你泰国现在目前是刷签还是什么签证吗？"
 
 **我的回答**：
 - 目前是旅游签（泰国免签政策改后可待 30 天）
